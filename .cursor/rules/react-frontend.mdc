@@ -1,0 +1,22 @@
+---
+description: React and shadcn conventions for HotDeploy frontend
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# React Frontend
+
+- Functional components; features in `src/features/`, layout in `src/components/layout/`.
+- Use shadcn primitives from `@/components/ui/` — extend via `cn()` and CVA variants.
+- Data: TanStack Query for Tauri `invoke` results; keys like `["credentials-status"]`.
+- Forms: react-hook-form + zod (when adding forms).
+- Call Hostinger only through `@/lib/hostinger/client` → Tauri commands.
+- Icons: lucide-react; brand flame uses `text-flame-500`.
+
+```tsx
+// ✅ GOOD
+const { data } = useQuery({ queryKey: ["projects"], queryFn: listProjects });
+
+// ❌ BAD — no direct fetch to Hostinger from React
+fetch("https://api.hostinger.com/...");
+```

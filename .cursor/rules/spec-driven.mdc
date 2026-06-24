@@ -1,0 +1,15 @@
+---
+description: Spec-driven development format for HotDeploy feature specs
+globs: "specs/**"
+alwaysApply: false
+---
+
+# Spec-Driven Development
+
+- Every feature has `specs/features/NNN-kebab-name.spec.md` before implementation.
+- Copy from `specs/templates/feature.spec.md`.
+- Required sections: Summary, User journey, Acceptance criteria (checkboxes).
+- Include Tauri commands table and Hostinger API table when applicable.
+- "Out of scope" must list deferred work — open follow-up specs instead of scope creep.
+- Update spec in the same PR if behavior changes during implementation.
+- PR description must include: `Spec: specs/features/NNN-name.spec.md`.

@@ -1,0 +1,15 @@
+---
+description: Core HotDeploy standards for all agent sessions
+alwaysApply: true
+---
+
+# HotDeploy Core Standards
+
+- Read `AGENTS.md` and `CONTEXT.md` before domain or feature work.
+- All committed artifacts in **English** (code, docs, UI, commits, PRs).
+- API keys and secrets only in Rust keychain — never in React or git.
+- Hostinger-first v1; provider logic stays in `src-tauri/`, not scattered in UI.
+- Spec required before feature PR: `specs/features/NNN-*.spec.md`.
+- Run `pnpm quality` before opening a PR.
+- Do not create new markdown files unless listed in AGENTS.md §7 or explicitly requested.
+- Use design tokens from `DESIGN.md` — no arbitrary Tailwind colors.

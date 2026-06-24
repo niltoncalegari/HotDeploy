@@ -1,0 +1,23 @@
+---
+description: Tauri Rust command and Hostinger client conventions
+globs: "src-tauri/**/*.rs"
+alwaysApply: false
+---
+
+# Tauri / Rust
+
+- Commands in `src-tauri/src/commands/`; HTTP in `src-tauri/src/hostinger/`.
+- Use `#[tauri::command]`; return `Result<T, String>` with `HostingerError` mapped to JSON.
+- Store API keys with `keyring` crate only — never `tauri-plugin-store`.
+- Use `reqwest` with rustls for Hostinger HTTPS.
+- Stub unimplemented commands with `HostingerError::NotImplemented` until spec ships.
+- Run `cargo fmt` and `cargo clippy` before PR.
+
+```rust
+// ✅ GOOD
+#[tauri::command]
+pub async fn list_projects(vm_id: u64) -> Result<Vec<DockerProjectSummary>, String> {
+    let api_key = load_api_key().map_err(String::from)?;
+    // ...
+}
+```

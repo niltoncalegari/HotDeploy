@@ -1,0 +1,46 @@
+name: Feature slice
+description: A user-visible feature driven by a spec file in specs/features/
+title: "Slice N.X — short title"
+labels: ["slice:vertical"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [CONTRIBUTING.md](../CONTRIBUTING.md) and create/update the spec **before** coding.
+        Spec path is required in the issue body.
+  - type: textarea
+    id: spec-path
+    attributes:
+      label: Spec path
+      description: "e.g. specs/features/001-vps-connection.spec.md"
+      placeholder: specs/features/001-vps-connection.spec.md
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What can the user do when this slice ships?
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      options:
+        - "0"
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+        - "6"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Copy from spec checkboxes
+    validations:
+      required: true
