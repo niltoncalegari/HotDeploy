@@ -49,7 +49,13 @@ pub fn save_credentials(api_key: String, virtual_machine_id: u64) -> Result<(), 
     let api_key_entry = Entry::new(SERVICE_NAME, API_KEY_ACCOUNT).map_err(keychain_err)?;
     let vm_entry = Entry::new(SERVICE_NAME, VM_ID_ACCOUNT).map_err(keychain_err)?;
 
-    api_key_entry.set_password(&api_key).map_err(keychain_err)?;
+    if !api_key.trim().is_empty() {
+        api_key_entry
+            .set_password(api_key.trim())
+            .map_err(keychain_err)?;
+    } else if read_password(&api_key_entry).unwrap_or_default().is_empty() {
+        return Err(String::from(HostingerError::NotConfigured));
+    }
 
     let payload = StoredVmId { virtual_machine_id };
     let serialized = serde_json::to_string(&payload)

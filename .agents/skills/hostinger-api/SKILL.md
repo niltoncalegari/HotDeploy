@@ -9,6 +9,13 @@ description: Hostinger VPS Docker Manager API reference for HotDeploy. Use when 
 **Auth:** `Authorization: Bearer <api_key>`  
 **Stability:** experimental (per Hostinger docs)
 
+## Virtual Machine endpoints
+
+| Operation | Method | Path |
+|---|---|---|
+| List VMs | GET | `/api/vps/v1/virtual-machines` |
+| Get VM | GET | `/api/vps/v1/virtual-machines/{vmId}` |
+
 ## Docker Manager endpoints
 
 | Operation | Method | Path |
@@ -16,11 +23,13 @@ description: Hostinger VPS Docker Manager API reference for HotDeploy. Use when 
 | List projects | GET | `/api/vps/v1/virtual-machines/{vmId}/docker` |
 | Create/replace project | POST | `/api/vps/v1/virtual-machines/{vmId}/docker` |
 | Get project | GET | `/api/vps/v1/virtual-machines/{vmId}/docker/{projectName}` |
+| Get containers | GET | `/api/vps/v1/virtual-machines/{vmId}/docker/{projectName}/containers` |
+| Get logs | GET | `/api/vps/v1/virtual-machines/{vmId}/docker/{projectName}/logs` |
 | Start | POST | `.../docker/{projectName}/start` |
 | Stop | POST | `.../docker/{projectName}/stop` |
 | Restart | POST | `.../docker/{projectName}/restart` |
 | Update | POST | `.../docker/{projectName}/update` |
-| Containers | GET | `.../docker/{projectName}/containers` |
+| Delete | DELETE | `.../docker/{projectName}/down` |
 
 ## Create project body
 
@@ -44,6 +53,7 @@ description: Hostinger VPS Docker Manager API reference for HotDeploy. Use when 
 ## References
 
 - [VPSDockerManagerApi.md](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md)
+- [VPSVirtualMachineApi.md](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSVirtualMachineApi.md)
 - [deploy-on-vps Action](https://github.com/hostinger/deploy-on-vps)
 
 ## Provider expansion
