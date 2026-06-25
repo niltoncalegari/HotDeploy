@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 006 |
 | **Phase** | 3.B |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/006-github-deploy.spec.md` |
 
 ## Summary
@@ -27,9 +27,9 @@ Configure GitHub repository URL as deploy source and deploy via Hostinger API (V
 
 ## Acceptance criteria
 
-- [ ] Deploy source toggle local/GitHub in Settings
-- [ ] `deploy_project` sends GitHub URL as `content`
-- [ ] `pnpm quality` green
+- [x] Deploy source toggle local/GitHub in Settings
+- [x] `deploy_project` sends GitHub URL as `content`
+- [x] `pnpm quality` green
 
 ## Dependencies
 

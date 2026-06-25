@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 005 |
 | **Phase** | 3.A |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/005-local-deploy.spec.md` |
 
 ## Summary
@@ -36,10 +36,10 @@ Deploy a Docker Project from a local `docker-compose.yaml` file via file picker 
 
 ## Acceptance criteria
 
-- [ ] File picker selects compose file path
-- [ ] Deploy button triggers `deploy_project`
-- [ ] API key and compose secrets never logged
-- [ ] `pnpm quality` green
+- [x] File picker selects compose file path
+- [x] Deploy button triggers `deploy_project`
+- [x] API key and compose secrets never logged
+- [x] `pnpm quality` green
 
 ## Dependencies
 

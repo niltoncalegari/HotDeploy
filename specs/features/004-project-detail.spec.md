@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 004 |
 | **Phase** | 2.B |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/004-project-detail.spec.md` |
 
 ## Summary
@@ -37,9 +37,9 @@ View Docker Project detail with container list, health badges, ports, and compos
 
 ## Acceptance criteria
 
-- [ ] Route `/projects/:projectName` shows containers and compose
-- [ ] Health badges use design tokens
-- [ ] `pnpm quality` green
+- [x] Route `/projects/:projectName` shows containers and compose
+- [x] Health badges use design tokens
+- [x] `pnpm quality` green
 
 ## Dependencies
 

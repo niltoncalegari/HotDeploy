@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 003 |
 | **Phase** | 2.A |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/003-docker-project-list.spec.md` |
 
 ## Summary
@@ -43,9 +43,9 @@ List remote Docker Projects from the connected VPS on the Deployment Panel with 
 
 ## Acceptance criteria
 
-- [ ] Projects page shows remote Docker Projects when credentials configured
-- [ ] Loading and error states handled
-- [ ] `pnpm quality` green
+- [x] Projects page shows remote Docker Projects when credentials configured
+- [x] Loading and error states handled
+- [x] `pnpm quality` green
 
 ## Dependencies
 

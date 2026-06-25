@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 002 |
 | **Phase** | 1.A |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/002-vps-connection.spec.md` |
 
 ## Summary
@@ -50,10 +50,10 @@ Connect HotDeploy to Hostinger by saving an API key in the **Credential Vault**,
 
 ## Tests
 
-- [ ] Harness: `listVirtualMachines` fake client + schema validation
-- [ ] Harness: `testConnection` fake client
-- [ ] Rust: JSON deserialization for VM list
-- [ ] React: `CredentialsCard` renders save/test states
+- [x] Harness: `listVirtualMachines` fake client + schema validation
+- [x] Harness: `testConnection` fake client
+- [x] Rust: JSON deserialization for VM list
+- [x] React: `CredentialsCard` renders save/test states
 
 ## Out of scope
 
@@ -63,11 +63,11 @@ Connect HotDeploy to Hostinger by saving an API key in the **Credential Vault**,
 
 ## Acceptance criteria
 
-- [ ] User can save and clear API key via Settings UI
-- [ ] VPS dropdown populated from `list_vms`
-- [ ] Test connection succeeds against Docker Manager on selected VPS
-- [ ] API key never written to `workspace.json` or logs
-- [ ] `pnpm quality` green
+- [x] User can save and clear API key via Settings UI
+- [x] VPS dropdown populated from `list_vms`
+- [x] Test connection succeeds against Docker Manager on selected VPS
+- [x] API key never written to `workspace.json` or logs
+- [x] `pnpm quality` green
 
 ## Dependencies
 

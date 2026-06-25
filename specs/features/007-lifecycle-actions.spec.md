@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 007 |
 | **Phase** | 4.A |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/007-lifecycle-actions.spec.md` |
 
 ## Summary
@@ -24,9 +24,9 @@ Start, stop, restart, and update Docker Projects from the project detail page.
 
 ## Acceptance criteria
 
-- [ ] Lifecycle buttons on project detail
-- [ ] Confirmation for stop and update
-- [ ] `pnpm quality` green
+- [x] Lifecycle buttons on project detail
+- [x] Confirmation for stop and update
+- [x] `pnpm quality` green
 
 ## Dependencies
 

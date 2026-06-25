@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 008 |
 | **Phase** | 4.B |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/008-container-logs.spec.md` |
 
 ## Summary
@@ -27,9 +27,9 @@ View aggregated container logs on the project detail page with service filter an
 
 ## Acceptance criteria
 
-- [ ] Logs panel on project detail
-- [ ] Filter by service
-- [ ] `pnpm quality` green
+- [x] Logs panel on project detail
+- [x] Filter by service
+- [x] `pnpm quality` green
 
 ## Dependencies
 

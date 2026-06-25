@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 010 |
 | **Phase** | 5.B |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/010-deployment-history.spec.md` |
 
 ## Summary
@@ -22,10 +22,10 @@ Persist local deployment and lifecycle history without secrets.
 
 ## Acceptance criteria
 
-- [ ] History recorded on deploy and lifecycle actions
-- [ ] HistoryCard in Settings
-- [ ] No API keys or env vars in history
-- [ ] `pnpm quality` green
+- [x] History recorded on deploy and lifecycle actions
+- [x] HistoryCard in Settings
+- [x] No API keys or env vars in history
+- [x] `pnpm quality` green
 
 ## Dependencies
 
