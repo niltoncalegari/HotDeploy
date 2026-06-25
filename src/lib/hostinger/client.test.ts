@@ -3,18 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearCredentials,
   clearDeploymentHistory,
+  clearProviderCredentials,
   deployProject,
   getCredentialsStatus,
   getDeploymentHistory,
+  getProviderCredentialsStatus,
   getProject,
   getProjectContainers,
   getProjectLogs,
   listProjects,
+  listSupportedProviders,
   listVirtualMachines,
   parseHostingerError,
   previewListVirtualMachines,
   restartProject,
   saveCredentials,
+  saveProviderCredentials,
   startProject,
   stopProject,
   testConnection,
@@ -41,6 +45,15 @@ describe("hostinger client", () => {
       virtualMachineId: 1,
     });
 
+    mockedInvoke.mockResolvedValueOnce({ configured: true, virtualMachineId: null });
+    await getProviderCredentialsStatus("digitalocean");
+
+    mockedInvoke.mockResolvedValueOnce(undefined);
+    await saveProviderCredentials("digitalocean", "do-token");
+
+    mockedInvoke.mockResolvedValueOnce(undefined);
+    await clearProviderCredentials("digitalocean");
+
     mockedInvoke.mockResolvedValueOnce(undefined);
     await saveCredentials("key", 1);
     expect(mockedInvoke).toHaveBeenCalledWith("save_credentials", {
@@ -53,14 +66,24 @@ describe("hostinger client", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("clear_credentials");
   });
 
+  it("invokes provider registry command", async () => {
+    mockedInvoke.mockResolvedValueOnce([
+      { id: "hostinger", label: "Hostinger", dockerComposeSupported: true },
+    ]);
+    const providers = await listSupportedProviders();
+    expect(providers[0]?.id).toBe("hostinger");
+  });
+
   it("invokes list and connection commands", async () => {
     mockedInvoke.mockResolvedValueOnce([{ id: 1, hostname: "srv1", state: "running" }]);
     await listVirtualMachines();
+    expect(mockedInvoke).toHaveBeenCalledWith("list_vms", { provider: "hostinger" });
 
     mockedInvoke.mockResolvedValueOnce([{ id: 2, hostname: "srv2", state: "running" }]);
     await previewListVirtualMachines("preview-key");
     expect(mockedInvoke).toHaveBeenCalledWith("preview_list_vms", {
       apiKey: "preview-key",
+      provider: "hostinger",
     });
 
     mockedInvoke.mockResolvedValueOnce({
@@ -112,6 +135,7 @@ describe("hostinger client", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("update_project", {
       virtualMachineId: 1,
       projectName: "api",
+      provider: "hostinger",
     });
   });
 

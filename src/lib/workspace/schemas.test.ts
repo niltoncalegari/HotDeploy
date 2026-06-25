@@ -50,6 +50,17 @@ describe("workspaceConfigSchema", () => {
     });
   });
 
+  it("accepts digitalocean connection profiles", () => {
+    const profile = connectionProfileSchema.parse({
+      id: "profile-do",
+      label: "DO staging",
+      provider: "digitalocean",
+      virtualMachineId: 42,
+    });
+
+    expect(profile.provider).toBe("digitalocean");
+  });
+
   it("creates connection profiles and deploy projects with ids", () => {
     const profile = createConnectionProfile("Staging", 12);
     expect(profile.id).toBeTruthy();
