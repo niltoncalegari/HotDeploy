@@ -43,4 +43,4 @@ Branch pattern: `feat/slice-1a-hostinger-connection`
 
 ## Current status
 
-**Phase 0 — in progress.** Scaffold PR establishes harness; Phase 1 spec next: `specs/features/001-vps-connection.spec.md`.
+**Phase 0 — shipped.** Phases 1–5 implemented in specs 002–010.
