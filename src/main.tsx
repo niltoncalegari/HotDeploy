@@ -5,16 +5,19 @@ import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import { App } from "@/App";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { queryClient } from "@/lib/query-client";
 import "@/index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-        <Toaster richColors position="top-right" />
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <App />
+          <Toaster richColors position="top-right" />
+        </BrowserRouter>
+      </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
 );
