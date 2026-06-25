@@ -89,20 +89,23 @@
     color-scheme: dark;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    html.theme-animate,
-    html.theme-animate *,
-    html.theme-animate *::before,
-    html.theme-animate *::after {
-      transition-property: background-color, border-color, color, fill, stroke;
-      transition-duration: 300ms;
-      transition-timing-function: ease-in-out;
-    }
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-family: Inter, system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Unlayered so theme toggle overrides component transition utilities. */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-animate,
+  html.theme-animate *,
+  html.theme-animate *::before,
+  html.theme-animate *::after {
+    transition-property: background-color, border-color, color, fill, stroke,
+      box-shadow, outline-color !important;
+    transition-duration: 300ms !important;
+    transition-timing-function: ease-in-out !important;
+    transition-delay: 0ms !important;
   }
 }
 
