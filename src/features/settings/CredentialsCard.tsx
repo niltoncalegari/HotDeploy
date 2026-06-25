@@ -19,15 +19,25 @@ import {
   getCredentialsStatus,
   listVirtualMachines,
   parseHostingerError,
+  previewListVirtualMachines,
   saveCredentials,
   testConnection,
+  type VirtualMachine,
 } from "@/lib/hostinger/client";
+import { saveWorkspace } from "@/lib/workspace/client";
+import { useWorkspace } from "@/lib/workspace/hooks";
+import {
+  findProfileLabelForVm,
+  syncConnectionProfileFromVm,
+} from "@/lib/workspace/sync-profile";
 
 export function CredentialsCard() {
   const queryClient = useQueryClient();
+  const { data: workspace } = useWorkspace();
   const [apiKey, setApiKey] = useState("");
   const [manualVmId, setManualVmId] = useState("");
   const [selectedVmId, setSelectedVmId] = useState<number | null>(null);
+  const [previewVms, setPreviewVms] = useState<VirtualMachine[]>([]);
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
 
   const { data: credentials, isLoading: credentialsLoading } = useQuery({
@@ -36,15 +46,22 @@ export function CredentialsCard() {
   });
 
   const {
-    data: virtualMachines = [],
-    isFetching: vmsLoading,
-    refetch: refetchVms,
+    data: savedVirtualMachines = [],
+    isFetching: savedVmsLoading,
+    refetch: refetchSavedVms,
   } = useQuery({
     queryKey: ["virtual-machines"],
     queryFn: listVirtualMachines,
     enabled: credentials?.configured ?? false,
     retry: false,
   });
+
+  const virtualMachines = credentials?.configured
+    ? savedVirtualMachines
+    : previewVms;
+  const vmsLoading = credentials?.configured ? savedVmsLoading : false;
+  const canLoadVms =
+    Boolean(apiKey.trim()) || Boolean(credentials?.configured);
 
   const resolvedVmId =
     selectedVmId ??
@@ -66,10 +83,44 @@ export function CredentialsCard() {
       if (apiKey.trim()) {
         setApiKey("");
       }
+      setPreviewVms([]);
       setConnectionMessage(null);
+
+      if (workspace && resolvedVmId) {
+        const label = findProfileLabelForVm(resolvedVmId, virtualMachines);
+        const nextWorkspace = syncConnectionProfileFromVm(
+          workspace,
+          resolvedVmId,
+          label,
+        );
+        await saveWorkspace(nextWorkspace);
+        queryClient.setQueryData(["workspace"], nextWorkspace);
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["credentials-status"] });
-      await refetchVms();
+      await refetchSavedVms();
       toast.success("Credentials saved.");
+    },
+    onError: (error) => {
+      toast.error(parseHostingerError(error));
+    },
+  });
+
+  const loadVmsMutation = useMutation({
+    mutationFn: async () => {
+      if (credentials?.configured) {
+        return refetchSavedVms().then((result) => result.data ?? []);
+      }
+      if (!apiKey.trim()) {
+        throw new Error("Paste your API key to load the VPS list.");
+      }
+      return previewListVirtualMachines(apiKey.trim());
+    },
+    onSuccess: (vms) => {
+      if (!credentials?.configured) {
+        setPreviewVms(vms);
+      }
+      toast.success(`Loaded ${vms.length} VPS instance${vms.length === 1 ? "" : "s"}.`);
     },
     onError: (error) => {
       toast.error(parseHostingerError(error));
@@ -82,6 +133,7 @@ export function CredentialsCard() {
       setApiKey("");
       setSelectedVmId(null);
       setManualVmId("");
+      setPreviewVms([]);
       setConnectionMessage(null);
       await queryClient.invalidateQueries({ queryKey: ["credentials-status"] });
       await queryClient.removeQueries({ queryKey: ["virtual-machines"] });
@@ -123,7 +175,8 @@ export function CredentialsCard() {
           API credentials
         </CardTitle>
         <CardDescription>
-          Stored securely in your operating system keychain.
+          Stored securely in your operating system keychain. Saving also syncs
+          the active connection profile VM ID.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -168,10 +221,14 @@ export function CredentialsCard() {
                   setManualVmId(String(value));
                 }
               }}
-              disabled={!credentials?.configured}
+              disabled={!canLoadVms || virtualMachines.length === 0}
             >
               <option value="">
-                {vmsLoading ? "Loading VPS list…" : "Select VPS"}
+                {vmsLoading || loadVmsMutation.isPending
+                  ? "Loading VPS list…"
+                  : virtualMachines.length === 0
+                    ? "Load VPS list first"
+                    : "Select VPS"}
               </option>
               {virtualMachines.map((vm) => (
                 <option key={vm.id} value={vm.id}>
@@ -215,20 +272,22 @@ export function CredentialsCard() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => testMutation.mutate()}
-            disabled={testMutation.isPending || !resolvedVmId}
+            onClick={() => loadVmsMutation.mutate()}
+            disabled={!canLoadVms || loadVmsMutation.isPending || vmsLoading}
           >
-            <PlugZap className="size-4" />
-            Test connection
+            <RefreshCw className="size-4" />
+            Load VPS list
           </Button>
           <Button
             type="button"
             variant="outline"
-            onClick={() => refetchVms()}
-            disabled={!credentials?.configured || vmsLoading}
+            onClick={() => testMutation.mutate()}
+            disabled={
+              testMutation.isPending || !resolvedVmId || !credentials?.configured
+            }
           >
-            <RefreshCw className="size-4" />
-            Refresh VPS list
+            <PlugZap className="size-4" />
+            Test connection
           </Button>
           <Button
             type="button"

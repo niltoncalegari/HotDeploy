@@ -1,30 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { getCredentialsStatus } from "@/lib/hostinger/client";
 import { getWorkspace } from "@/lib/workspace/client";
 import {
   defaultWorkspaceConfig,
   type ConnectionProfile,
-  type WorkspaceConfig,
 } from "@/lib/workspace/schemas";
+import { resolveActiveProfile as resolveProfile } from "@/lib/workspace/sync-profile";
 
-export function resolveActiveProfile(
-  workspace: WorkspaceConfig,
-): ConnectionProfile | null {
-  if (workspace.connectionProfiles.length === 0) {
-    return null;
-  }
-
-  if (workspace.activeConnectionProfileId) {
-    const active = workspace.connectionProfiles.find(
-      (profile) => profile.id === workspace.activeConnectionProfileId,
-    );
-    if (active) {
-      return active;
-    }
-  }
-
-  return workspace.connectionProfiles[0] ?? null;
-}
+export { resolveActiveProfile } from "@/lib/workspace/sync-profile";
+export type { ConnectionProfile };
 
 export function useWorkspace() {
   return useQuery({
@@ -34,7 +19,12 @@ export function useWorkspace() {
   });
 }
 
-export function useActiveProfile() {
+export function useActiveProfile(): ConnectionProfile | null {
   const { data: workspace = defaultWorkspaceConfig } = useWorkspace();
-  return resolveActiveProfile(workspace);
+  const { data: credentials } = useQuery({
+    queryKey: ["credentials-status"],
+    queryFn: getCredentialsStatus,
+  });
+
+  return resolveProfile(workspace, credentials?.virtualMachineId ?? null);
 }
