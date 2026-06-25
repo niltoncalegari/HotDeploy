@@ -1,9 +1,10 @@
 mod commands;
 mod hostinger;
+mod workspace;
 
 use commands::{
-    clear_credentials, get_credentials_status, get_project_logs, list_projects, list_vms,
-    save_credentials,
+    clear_credentials, get_credentials_status, get_project_logs, get_workspace,
+    get_workspace_file_path, list_projects, list_vms, save_credentials, save_workspace_command,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,6 +19,9 @@ pub fn run() {
             list_vms,
             list_projects,
             get_project_logs,
+            get_workspace,
+            save_workspace_command,
+            get_workspace_file_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
