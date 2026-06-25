@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | 001 |
 | **Phase** | 0.B |
-| **Status** | approved |
+| **Status** | shipped |
 | **Spec path** | `specs/features/001-workspace-config.spec.md` |
 
 ## Summary
@@ -48,10 +48,10 @@ No new API calls. VM IDs are stored locally; credentials remain in **Credential 
 
 ## Tests
 
-- [ ] Rust: default config + serde round-trip
-- [ ] TS: Zod schema validation
-- [ ] TS: `resolveThemeClass` utility
-- [ ] Manual: toggle dark mode, restart app, theme persists
+- [x] Rust: default config + serde round-trip
+- [x] TS: Zod schema validation
+- [x] TS: `resolveThemeClass` utility
+- [x] Manual: toggle dark mode, restart app, theme persists
 
 ## Out of scope
 
@@ -62,12 +62,12 @@ No new API calls. VM IDs are stored locally; credentials remain in **Credential 
 
 ## Acceptance criteria
 
-- [ ] `workspace.json` created under OS app config directory on first save
-- [ ] Dark mode toggle persists and restores on launch
-- [ ] User can add/remove Connection Profiles and Deploy Projects
-- [ ] Projects page lists saved deploy projects
-- [ ] API keys never written to `workspace.json`
-- [ ] `pnpm quality` green
+- [x] `workspace.json` created under OS app config directory on first save
+- [x] Dark mode toggle persists and restores on launch
+- [x] User can add/remove Connection Profiles and Deploy Projects
+- [x] Projects page lists saved deploy projects
+- [x] API keys never written to `workspace.json`
+- [x] `pnpm quality` green
 
 ## Dependencies
 

@@ -2,7 +2,9 @@ mod error;
 mod types;
 
 pub use error::WorkspaceError;
-pub use types::{WorkspaceConfig, WORKSPACE_VERSION};
+pub use types::{
+    ConnectionProfile, DeployProjectConfig, DeploySource, WorkspaceConfig, WORKSPACE_VERSION,
+};
 
 use std::fs;
 use std::path::PathBuf;
