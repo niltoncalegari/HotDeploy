@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, Server } from "lucide-react";
+import { KeyRound } from "lucide-react";
 
-import { Header } from "@/components/layout/Header";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { AppearanceCard } from "@/features/settings/AppearanceCard";
+import { ConnectionProfilesCard } from "@/features/settings/ConnectionProfilesCard";
+import { DeployProjectsCard } from "@/features/settings/DeployProjectsCard";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -11,20 +14,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCredentialsStatus } from "@/lib/hostinger/client";
+import { getWorkspace, getWorkspaceFilePath } from "@/lib/workspace/client";
+import { defaultWorkspaceConfig } from "@/lib/workspace/schemas";
 
 export function SettingsPage() {
-  const { data: credentials, isLoading } = useQuery({
+  const { data: credentials, isLoading: credentialsLoading } = useQuery({
     queryKey: ["credentials-status"],
     queryFn: getCredentialsStatus,
   });
 
+  const { data: workspace = defaultWorkspaceConfig } = useQuery({
+    queryKey: ["workspace"],
+    queryFn: getWorkspace,
+  });
+
+  const { data: workspaceFilePath } = useQuery({
+    queryKey: ["workspace-file-path"],
+    queryFn: getWorkspaceFilePath,
+  });
+
   return (
-    <>
-      <Header
-        title="Settings"
-        description="Manage Hostinger credentials and default VPS selection."
-      />
+    <PageLayout
+      title="Settings"
+      description="Manage appearance, VPS targets, deploy projects, and credentials."
+    >
       <div className="grid gap-4 p-6 md:grid-cols-2">
+        <AppearanceCard />
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -36,7 +51,7 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {credentialsLoading ? (
               <p className="text-muted-foreground text-sm">Checking status…</p>
             ) : (
               <Badge variant={credentials?.configured ? "default" : "outline"}>
@@ -45,24 +60,14 @@ export function SettingsPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Server className="size-4" />
-              Default VPS
-            </CardTitle>
-            <CardDescription>
-              Virtual machine used for deploy and lifecycle actions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">
-              VM picker ships in Phase 1. Provider expansion is planned after
-              Hostinger support is stable.
-            </p>
-          </CardContent>
-        </Card>
+        <ConnectionProfilesCard workspace={workspace} />
+        <DeployProjectsCard workspace={workspace} />
       </div>
-    </>
+      {workspaceFilePath ? (
+        <p className="text-muted-foreground px-6 pb-6 text-xs">
+          Workspace file: {workspaceFilePath}
+        </p>
+      ) : null}
+    </PageLayout>
   );
 }
