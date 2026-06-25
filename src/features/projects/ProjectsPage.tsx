@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   deployProject,
   getCredentialsStatus,
@@ -30,11 +31,36 @@ import {
 } from "@/lib/hostinger/client";
 import { useActiveProfile, useWorkspace } from "@/lib/workspace/hooks";
 
+const DEPLOY_POLL_INTERVAL_MS = 3000;
+const DEPLOY_POLL_MAX_ATTEMPTS = 20;
+
+async function waitForProjectRunning(
+  virtualMachineId: number,
+  dockerProjectName: string,
+): Promise<boolean> {
+  for (let attempt = 0; attempt < DEPLOY_POLL_MAX_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, DEPLOY_POLL_INTERVAL_MS);
+    });
+
+    const projects = await listProjects(virtualMachineId);
+    const match = projects.find((project) => project.name === dockerProjectName);
+
+    if (match?.state.toLowerCase() === "running") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function ProjectsPage() {
   const queryClient = useQueryClient();
   const activeProfile = useActiveProfile();
   const { data: workspace } = useWorkspace();
+  const [deployPickerOpen, setDeployPickerOpen] = useState(false);
   const [deployProjectId, setDeployProjectId] = useState<string | null>(null);
+  const [pickerProjectId, setPickerProjectId] = useState<string>("");
 
   const { data: credentials } = useQuery({
     queryKey: ["credentials-status"],
@@ -54,11 +80,30 @@ export function ProjectsPage() {
     retry: false,
   });
 
+  const hasActiveTarget = Boolean(activeProfile);
+  const localProjects = workspace?.deployProjects ?? [];
+
   const deployMutation = useMutation({
     mutationFn: deployProject,
-    onSuccess: async () => {
-      toast.success("Deployment started.");
+    onSuccess: async (_result, projectId) => {
+      const deployed = localProjects.find((project) => project.id === projectId);
       setDeployProjectId(null);
+
+      if (deployed && activeProfile) {
+        toast.success("Deployment started. Waiting for running state…");
+        const running = await waitForProjectRunning(
+          activeProfile.virtualMachineId,
+          deployed.dockerProjectName,
+        );
+        if (running) {
+          toast.success(`${deployed.dockerProjectName} is running.`);
+        } else {
+          toast.message("Deployment submitted. Refresh to check status.");
+        }
+      } else {
+        toast.success("Deployment started.");
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       await queryClient.invalidateQueries({ queryKey: ["deployment-history"] });
     },
@@ -67,37 +112,47 @@ export function ProjectsPage() {
     },
   });
 
-  const hasProfiles = (workspace?.connectionProfiles.length ?? 0) > 0;
-  const localProjects = workspace?.deployProjects ?? [];
   const selectedDeployProject = localProjects.find(
     (project) => project.id === deployProjectId,
   );
+
+  const openDeployFlow = () => {
+    if (localProjects.length === 1) {
+      setDeployProjectId(localProjects[0]!.id);
+      return;
+    }
+
+    setPickerProjectId(localProjects[0]?.id ?? "");
+    setDeployPickerOpen(true);
+  };
+
+  const confirmPickerSelection = () => {
+    if (!pickerProjectId) {
+      return;
+    }
+    setDeployPickerOpen(false);
+    setDeployProjectId(pickerProjectId);
+  };
 
   return (
     <PageLayout
       title="Projects"
       description="Docker Compose projects running on your connected VPS."
       actions={
-        <Button
-          disabled={localProjects.length === 0}
-          onClick={() => {
-            if (localProjects[0]) {
-              setDeployProjectId(localProjects[0].id);
-            }
-          }}
-        >
+        <Button disabled={localProjects.length === 0} onClick={openDeployFlow}>
           <Rocket className="size-4" />
           Deploy project
         </Button>
       }
     >
       <div className="flex flex-col gap-4 p-6">
-        {!hasProfiles ? (
+        {!hasActiveTarget ? (
           <Card className="max-w-lg">
             <CardHeader>
               <CardTitle>No VPS configured yet</CardTitle>
               <CardDescription>
-                Add a connection profile in Settings to register VPS targets.
+                Save your Hostinger API key in Settings. HotDeploy will create
+                or sync a connection profile for the selected VPS.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -233,6 +288,38 @@ export function ProjectsPage() {
           </>
         )}
       </div>
+
+      <Dialog open={deployPickerOpen} onOpenChange={setDeployPickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select deploy project</DialogTitle>
+            <DialogDescription>
+              Choose which registered Compose source to deploy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="deploy-project-picker">Deploy project</Label>
+            <select
+              id="deploy-project-picker"
+              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              value={pickerProjectId}
+              onChange={(event) => setPickerProjectId(event.target.value)}
+            >
+              {localProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name} → {project.dockerProjectName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeployPickerOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPickerSelection}>Continue</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={deployProjectId !== null}
