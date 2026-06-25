@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { Flame, Rocket, Server } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { FolderOpen, Rocket, Server } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
@@ -12,24 +14,78 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getWorkspace } from "@/lib/workspace/client";
-import { defaultWorkspaceConfig } from "@/lib/workspace/schemas";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  deployProject,
+  getCredentialsStatus,
+  listProjects,
+  parseHostingerError,
+} from "@/lib/hostinger/client";
+import { useActiveProfile, useWorkspace } from "@/lib/workspace/hooks";
 
 export function ProjectsPage() {
-  const { data: workspace = defaultWorkspaceConfig } = useQuery({
-    queryKey: ["workspace"],
-    queryFn: getWorkspace,
+  const queryClient = useQueryClient();
+  const activeProfile = useActiveProfile();
+  const { data: workspace } = useWorkspace();
+  const [deployProjectId, setDeployProjectId] = useState<string | null>(null);
+
+  const { data: credentials } = useQuery({
+    queryKey: ["credentials-status"],
+    queryFn: getCredentialsStatus,
   });
 
-  const hasProfiles = workspace.connectionProfiles.length > 0;
-  const hasProjects = workspace.deployProjects.length > 0;
+  const {
+    data: remoteProjects = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["projects", activeProfile?.virtualMachineId],
+    queryFn: () => listProjects(activeProfile!.virtualMachineId),
+    enabled: Boolean(activeProfile && credentials?.configured),
+    retry: false,
+  });
+
+  const deployMutation = useMutation({
+    mutationFn: deployProject,
+    onSuccess: async () => {
+      toast.success("Deployment started.");
+      setDeployProjectId(null);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await queryClient.invalidateQueries({ queryKey: ["deployment-history"] });
+    },
+    onError: (deployError) => {
+      toast.error(parseHostingerError(deployError));
+    },
+  });
+
+  const hasProfiles = (workspace?.connectionProfiles.length ?? 0) > 0;
+  const localProjects = workspace?.deployProjects ?? [];
+  const selectedDeployProject = localProjects.find(
+    (project) => project.id === deployProjectId,
+  );
 
   return (
     <PageLayout
       title="Projects"
       description="Docker Compose projects running on your connected VPS."
       actions={
-        <Button disabled>
+        <Button
+          disabled={localProjects.length === 0}
+          onClick={() => {
+            if (localProjects[0]) {
+              setDeployProjectId(localProjects[0].id);
+            }
+          }}
+        >
           <Rocket className="size-4" />
           Deploy project
         </Button>
@@ -37,85 +93,183 @@ export function ProjectsPage() {
     >
       <div className="flex flex-col gap-4 p-6">
         {!hasProfiles ? (
-          <div className="flex min-h-[min(24rem,calc(100vh-12rem))] items-center justify-center">
-            <Card className="max-w-lg w-full">
-              <CardHeader className="items-center text-center">
-                <div className="bg-flame-glow mb-2 flex size-14 items-center justify-center rounded-full">
-                  <Flame className="text-flame-500 size-7" aria-hidden />
-                </div>
-                <CardTitle>No VPS configured yet</CardTitle>
-                <CardDescription>
-                  Add a connection profile in Settings to register VPS targets
-                  and deploy projects.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center gap-3">
-                <Button asChild variant="outline">
-                  <Link to="/settings">Open Settings</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="max-w-lg">
+            <CardHeader>
+              <CardTitle>No VPS configured yet</CardTitle>
+              <CardDescription>
+                Add a connection profile in Settings to register VPS targets.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline">
+                <Link to="/settings">Open Settings</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : !credentials?.configured ? (
+          <Card className="max-w-lg">
+            <CardHeader>
+              <CardTitle>Connect Hostinger API</CardTitle>
+              <CardDescription>
+                Save your API key in Settings to load remote Docker projects.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline">
+                <Link to="/settings">Open Settings</Link>
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <>
             <div className="flex items-center justify-between gap-3">
               <p className="text-muted-foreground text-sm">
-                {workspace.deployProjects.length} deploy project
-                {workspace.deployProjects.length === 1 ? "" : "s"} configured
-                locally.
+                {activeProfile?.label} · VM {activeProfile?.virtualMachineId}
               </p>
-              <Badge variant="secondary">Remote status — Phase 2</Badge>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Refresh
+              </Button>
             </div>
 
-            {!hasProjects ? (
+            {isLoading ? (
+              <p className="text-muted-foreground text-sm">Loading projects…</p>
+            ) : isError ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-destructive text-sm">
+                    {parseHostingerError(error)}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : remoteProjects.length === 0 ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">No deploy projects yet</CardTitle>
+                  <CardTitle className="text-base">No Docker projects yet</CardTitle>
                   <CardDescription>
-                    Register Compose files in Settings to prepare deployments.
+                    Deploy a project or register one in Settings.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button asChild variant="outline">
-                    <Link to="/settings">Configure deploy projects</Link>
-                  </Button>
-                </CardContent>
               </Card>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {workspace.deployProjects.map((project) => {
-                  const profile = workspace.connectionProfiles.find(
-                    (item) => item.id === project.connectionProfileId,
+                {remoteProjects.map((project) => {
+                  const localMatch = localProjects.find(
+                    (item) => item.dockerProjectName === project.name,
                   );
 
                   return (
-                    <Card key={project.id}>
+                    <Card key={project.name}>
                       <CardHeader>
-                        <CardTitle className="text-base">{project.name}</CardTitle>
-                        <CardDescription>
-                          Docker project: {project.dockerProjectName}
-                        </CardDescription>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <CardTitle className="text-base">
+                              <Link
+                                className="hover:underline"
+                                to={`/projects/${encodeURIComponent(project.name)}`}
+                              >
+                                {project.name}
+                              </Link>
+                            </CardTitle>
+                            <CardDescription>{project.filePath}</CardDescription>
+                          </div>
+                          <Badge variant="secondary">{project.state}</Badge>
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
-                        <p className="text-muted-foreground flex items-center gap-2">
-                          <Server className="size-4" />
-                          {profile?.label ?? "Unknown profile"} · VM{" "}
-                          {profile?.virtualMachineId ?? "—"}
+                        <p className="text-muted-foreground">
+                          {project.containers.length} container
+                          {project.containers.length === 1 ? "" : "s"}
                         </p>
-                        <p className="text-muted-foreground break-all">
-                          {project.deploySource.type === "local"
-                            ? project.deploySource.composeFilePath
-                            : project.deploySource.repositoryUrl}
-                        </p>
+                        {localMatch ? (
+                          <Badge variant="outline">Configured locally</Badge>
+                        ) : null}
+                        <Button asChild variant="outline" size="sm">
+                          <Link
+                            to={`/projects/${encodeURIComponent(project.name)}`}
+                          >
+                            <FolderOpen className="size-4" />
+                            View details
+                          </Link>
+                        </Button>
                       </CardContent>
                     </Card>
                   );
                 })}
               </div>
             )}
+
+            {localProjects.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Local deploy configs</CardTitle>
+                  <CardDescription>
+                    Registered Compose sources ready to deploy.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {localProjects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="flex items-center justify-between gap-3 rounded-md border p-3"
+                    >
+                      <div>
+                        <p className="font-medium">{project.name}</p>
+                        <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                          <Server className="size-4" />
+                          {project.dockerProjectName}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setDeployProjectId(project.id)}
+                      >
+                        Deploy
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
           </>
         )}
       </div>
+
+      <Dialog
+        open={deployProjectId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeployProjectId(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm deployment</DialogTitle>
+            <DialogDescription>
+              Deploy {selectedDeployProject?.dockerProjectName} to VM{" "}
+              {activeProfile?.virtualMachineId}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeployProjectId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={deployMutation.isPending || !deployProjectId}
+              onClick={() => {
+                if (deployProjectId) {
+                  deployMutation.mutate(deployProjectId);
+                }
+              }}
+            >
+              Deploy now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
