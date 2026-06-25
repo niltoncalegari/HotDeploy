@@ -2,21 +2,38 @@ use std::fs;
 
 use tauri::AppHandle;
 
-use crate::commands::credentials::load_api_key;
 use crate::deployment::{
     append_deployment_record, clear_deployment_history, load_deployment_history, DeploymentRecord,
 };
-use crate::hostinger::client::HostingerClient;
 use crate::hostinger::error::HostingerError;
 use crate::hostinger::types::{
     ActionResult, ConnectionTestResult, Container, DeployProjectRequest, DockerProject, LogEntry,
     ProjectContent, VirtualMachine,
 };
+use crate::provider::digitalocean::DigitalOceanProvider;
+use crate::provider::error::ProviderError;
+use crate::provider::hostinger::HostingerProvider;
+use crate::provider::registry::{build_provider, resolve_provider_id};
+use crate::provider::traits::VpsProvider;
 use crate::workspace::{load_workspace, DeploySource, WorkspaceConfig};
 
-fn client_from_credentials() -> Result<HostingerClient, String> {
-    let api_key = load_api_key().map_err(String::from)?;
-    Ok(HostingerClient::new(api_key))
+fn preview_provider(
+    api_key: String,
+    provider_id: &str,
+) -> Result<Box<dyn VpsProvider>, ProviderError> {
+    if api_key.trim().is_empty() {
+        return Err(ProviderError::Hostinger(HostingerError::NotConfigured));
+    }
+
+    match provider_id {
+        "hostinger" => Ok(Box::new(HostingerProvider::from_api_key(
+            api_key.trim().to_string(),
+        ))),
+        "digitalocean" => Ok(Box::new(DigitalOceanProvider::from_api_key(
+            api_key.trim().to_string(),
+        ))),
+        other => Err(ProviderError::UnknownProvider(other.to_string())),
+    }
 }
 
 fn record_action(
@@ -36,34 +53,43 @@ fn record_action(
 }
 
 #[tauri::command]
-pub async fn list_vms() -> Result<Vec<VirtualMachine>, String> {
-    let client = client_from_credentials()?;
-    client.list_virtual_machines().await.map_err(String::from)
+pub async fn list_vms(provider: Option<String>) -> Result<Vec<VirtualMachine>, String> {
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    provider.list_vms().await.map_err(String::from)
 }
 
 #[tauri::command]
-pub async fn preview_list_vms(api_key: String) -> Result<Vec<VirtualMachine>, String> {
-    if api_key.trim().is_empty() {
-        return Err(String::from(HostingerError::NotConfigured));
-    }
-
-    let client = HostingerClient::new(api_key.trim().to_string());
-    client.list_virtual_machines().await.map_err(String::from)
+pub async fn preview_list_vms(
+    api_key: String,
+    provider: Option<String>,
+) -> Result<Vec<VirtualMachine>, String> {
+    let provider_id = resolve_provider_id(provider);
+    let provider = preview_provider(api_key, &provider_id).map_err(String::from)?;
+    provider.list_vms().await.map_err(String::from)
 }
 
 #[tauri::command]
-pub async fn test_connection(virtual_machine_id: u64) -> Result<ConnectionTestResult, String> {
-    let client = client_from_credentials()?;
-    client
+pub async fn test_connection(
+    virtual_machine_id: u64,
+    provider: Option<String>,
+) -> Result<ConnectionTestResult, String> {
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    provider
         .test_connection(virtual_machine_id)
         .await
         .map_err(String::from)
 }
 
 #[tauri::command]
-pub async fn list_projects(virtual_machine_id: u64) -> Result<Vec<DockerProject>, String> {
-    let client = client_from_credentials()?;
-    client
+pub async fn list_projects(
+    virtual_machine_id: u64,
+    provider: Option<String>,
+) -> Result<Vec<DockerProject>, String> {
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    provider
         .list_projects(virtual_machine_id)
         .await
         .map_err(String::from)
@@ -73,9 +99,11 @@ pub async fn list_projects(virtual_machine_id: u64) -> Result<Vec<DockerProject>
 pub async fn get_project(
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<ProjectContent, String> {
-    let client = client_from_credentials()?;
-    client
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    provider
         .get_project(virtual_machine_id, &project_name)
         .await
         .map_err(String::from)
@@ -85,9 +113,11 @@ pub async fn get_project(
 pub async fn get_project_containers(
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<Vec<Container>, String> {
-    let client = client_from_credentials()?;
-    client
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    provider
         .get_project_containers(virtual_machine_id, &project_name)
         .await
         .map_err(String::from)
@@ -102,6 +132,14 @@ pub async fn deploy_project(
     let deploy_config = find_deploy_project(&workspace, &deploy_project_id)?;
     let profile = find_connection_profile(&workspace, &deploy_config.connection_profile_id)?;
 
+    let provider = build_provider(&profile.provider).map_err(String::from)?;
+    if !provider.supports_docker_compose() {
+        return Err(String::from(ProviderError::unsupported(
+            &profile.provider,
+            "Docker Compose deploy",
+        )));
+    }
+
     let content = resolve_deploy_content(&deploy_config.deploy_source)?;
     let request = DeployProjectRequest {
         project_name: deploy_config.docker_project_name.clone(),
@@ -109,8 +147,7 @@ pub async fn deploy_project(
         environment: deploy_config.environment_profile.clone(),
     };
 
-    let client = client_from_credentials()?;
-    let result = client
+    let result = provider
         .deploy_project(profile.virtual_machine_id, &request)
         .await;
 
@@ -131,9 +168,11 @@ pub async fn start_project(
     app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<ActionResult, String> {
-    let client = client_from_credentials()?;
-    let result = client
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let result = provider
         .start_project(virtual_machine_id, &project_name)
         .await;
     record_lifecycle(&app, virtual_machine_id, &project_name, "start", &result);
@@ -145,9 +184,13 @@ pub async fn stop_project(
     app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<ActionResult, String> {
-    let client = client_from_credentials()?;
-    let result = client.stop_project(virtual_machine_id, &project_name).await;
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let result = provider
+        .stop_project(virtual_machine_id, &project_name)
+        .await;
     record_lifecycle(&app, virtual_machine_id, &project_name, "stop", &result);
     result.map_err(String::from)
 }
@@ -157,9 +200,11 @@ pub async fn restart_project(
     app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<ActionResult, String> {
-    let client = client_from_credentials()?;
-    let result = client
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let result = provider
         .restart_project(virtual_machine_id, &project_name)
         .await;
     record_lifecycle(&app, virtual_machine_id, &project_name, "restart", &result);
@@ -171,9 +216,11 @@ pub async fn update_project(
     app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<ActionResult, String> {
-    let client = client_from_credentials()?;
-    let result = client
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let result = provider
         .update_project(virtual_machine_id, &project_name)
         .await;
     record_lifecycle(&app, virtual_machine_id, &project_name, "update", &result);
@@ -184,9 +231,11 @@ pub async fn update_project(
 pub async fn get_project_logs(
     virtual_machine_id: u64,
     project_name: String,
+    provider: Option<String>,
 ) -> Result<Vec<LogEntry>, String> {
-    let client = client_from_credentials()?;
-    client
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&provider_id).map_err(String::from)?;
+    provider
         .get_project_logs(virtual_machine_id, &project_name)
         .await
         .map_err(String::from)
@@ -202,12 +251,36 @@ pub fn clear_deployment_history_command(app: AppHandle) -> Result<(), String> {
     clear_deployment_history(&app).map_err(String::from)
 }
 
+#[tauri::command]
+pub fn list_supported_providers() -> Vec<SupportedProvider> {
+    vec![
+        SupportedProvider {
+            id: "hostinger".to_string(),
+            label: "Hostinger".to_string(),
+            docker_compose_supported: true,
+        },
+        SupportedProvider {
+            id: "digitalocean".to_string(),
+            label: "DigitalOcean".to_string(),
+            docker_compose_supported: false,
+        },
+    ]
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SupportedProvider {
+    pub id: String,
+    pub label: String,
+    pub docker_compose_supported: bool,
+}
+
 fn record_lifecycle(
     app: &AppHandle,
     virtual_machine_id: u64,
     project_name: &str,
     action: &str,
-    result: &Result<ActionResult, HostingerError>,
+    result: &Result<ActionResult, ProviderError>,
 ) {
     let outcome = if result.is_ok() { "success" } else { "error" };
     record_action(

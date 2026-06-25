@@ -40,24 +40,25 @@ export function ProjectDetailPage() {
   const activeProfile = useActiveProfile();
   const queryClient = useQueryClient();
   const vmId = activeProfile?.virtualMachineId;
+  const provider = activeProfile?.provider ?? "hostinger";
 
   const { data: projects = [] } = useQuery({
-    queryKey: ["projects", vmId],
-    queryFn: () => listProjects(vmId!),
+    queryKey: ["projects", vmId, provider],
+    queryFn: () => listProjects(vmId!, provider),
     enabled: Boolean(vmId),
   });
 
   const project = projects.find((item) => item.name === decodedName);
 
   const { data: containers = [], isLoading: containersLoading } = useQuery({
-    queryKey: ["project-containers", vmId, decodedName],
-    queryFn: () => getProjectContainers(vmId!, decodedName),
+    queryKey: ["project-containers", vmId, decodedName, provider],
+    queryFn: () => getProjectContainers(vmId!, decodedName, provider),
     enabled: Boolean(vmId && decodedName),
   });
 
   const { data: projectContent } = useQuery({
-    queryKey: ["project-content", vmId, decodedName],
-    queryFn: () => getProject(vmId!, decodedName),
+    queryKey: ["project-content", vmId, decodedName, provider],
+    queryFn: () => getProject(vmId!, decodedName, provider),
     enabled: Boolean(vmId && decodedName),
   });
 
@@ -98,6 +99,7 @@ export function ProjectDetailPage() {
           <LifecycleActions
             virtualMachineId={vmId}
             projectName={decodedName}
+            provider={provider}
             onComplete={invalidateProjectQueries}
           />
         </div>
@@ -169,7 +171,11 @@ export function ProjectDetailPage() {
           </Card>
         ) : null}
 
-        <LogsPanel virtualMachineId={vmId} projectName={decodedName} />
+        <LogsPanel
+          virtualMachineId={vmId}
+          projectName={decodedName}
+          provider={provider}
+        />
       </div>
     </PageLayout>
   );

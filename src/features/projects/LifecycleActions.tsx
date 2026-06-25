@@ -18,10 +18,12 @@ import {
   stopProject,
   updateProject,
 } from "@/lib/hostinger/client";
+import type { ProviderId } from "@/lib/workspace/schemas";
 
 interface LifecycleActionsProps {
   virtualMachineId: number;
   projectName: string;
+  provider: ProviderId;
   onComplete: () => Promise<void>;
 }
 
@@ -30,6 +32,7 @@ type PendingAction = "stop" | "update" | null;
 export function LifecycleActions({
   virtualMachineId,
   projectName,
+  provider,
   onComplete,
 }: LifecycleActionsProps) {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -38,13 +41,13 @@ export function LifecycleActions({
     mutationFn: async (action: "start" | "stop" | "restart" | "update") => {
       switch (action) {
         case "start":
-          return startProject(virtualMachineId, projectName);
+          return startProject(virtualMachineId, projectName, provider);
         case "stop":
-          return stopProject(virtualMachineId, projectName);
+          return stopProject(virtualMachineId, projectName, provider);
         case "restart":
-          return restartProject(virtualMachineId, projectName);
+          return restartProject(virtualMachineId, projectName, provider);
         case "update":
-          return updateProject(virtualMachineId, projectName);
+          return updateProject(virtualMachineId, projectName, provider);
       }
     },
     onSuccess: async (_result, action) => {

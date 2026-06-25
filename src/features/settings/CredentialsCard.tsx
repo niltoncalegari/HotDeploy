@@ -50,8 +50,8 @@ export function CredentialsCard() {
     isFetching: savedVmsLoading,
     refetch: refetchSavedVms,
   } = useQuery({
-    queryKey: ["virtual-machines"],
-    queryFn: listVirtualMachines,
+    queryKey: ["virtual-machines", "hostinger"],
+    queryFn: () => listVirtualMachines("hostinger"),
     enabled: credentials?.configured ?? false,
     retry: false,
   });
@@ -114,7 +114,7 @@ export function CredentialsCard() {
       if (!apiKey.trim()) {
         throw new Error("Paste your API key to load the VPS list.");
       }
-      return previewListVirtualMachines(apiKey.trim());
+      return previewListVirtualMachines(apiKey.trim(), "hostinger");
     },
     onSuccess: (vms) => {
       if (!credentials?.configured) {

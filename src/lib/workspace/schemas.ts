@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const themeModeSchema = z.enum(["light", "dark"]);
 
+export const providerIdSchema = z.enum(["hostinger", "digitalocean"]);
+
 export const workspacePreferencesSchema = z.object({
   theme: themeModeSchema,
 });
@@ -9,7 +11,7 @@ export const workspacePreferencesSchema = z.object({
 export const connectionProfileSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  provider: z.literal("hostinger"),
+  provider: providerIdSchema,
   virtualMachineId: z.number().int().positive(),
 });
 
@@ -41,6 +43,7 @@ export const workspaceConfigSchema = z.object({
   deployProjects: z.array(deployProjectConfigSchema),
 });
 
+export type ProviderId = z.infer<typeof providerIdSchema>;
 export type ThemeMode = z.infer<typeof themeModeSchema>;
 export type WorkspacePreferences = z.infer<typeof workspacePreferencesSchema>;
 export type ConnectionProfile = z.infer<typeof connectionProfileSchema>;
@@ -58,11 +61,12 @@ export const defaultWorkspaceConfig: WorkspaceConfig = {
 export function createConnectionProfile(
   label: string,
   virtualMachineId: number,
+  provider: ProviderId = "hostinger",
 ): ConnectionProfile {
   return {
     id: crypto.randomUUID(),
     label,
-    provider: "hostinger",
+    provider,
     virtualMachineId,
   };
 }

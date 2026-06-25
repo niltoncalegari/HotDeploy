@@ -16,7 +16,9 @@ import { Label } from "@/components/ui/label";
 import { saveWorkspace } from "@/lib/workspace/client";
 import {
   createConnectionProfile,
+  providerIdSchema,
   type ConnectionProfile,
+  type ProviderId,
   type WorkspaceConfig,
 } from "@/lib/workspace/schemas";
 
@@ -30,6 +32,7 @@ export function ConnectionProfilesCard({
   const queryClient = useQueryClient();
   const [label, setLabel] = useState("");
   const [virtualMachineId, setVirtualMachineId] = useState("");
+  const [provider, setProvider] = useState<ProviderId>("hostinger");
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
@@ -57,7 +60,7 @@ export function ConnectionProfilesCard({
       return;
     }
 
-    const profile = createConnectionProfile(label.trim(), vmId);
+    const profile = createConnectionProfile(label.trim(), vmId, provider);
     const nextProfiles = [...workspace.connectionProfiles, profile];
 
     persist(nextProfiles, workspace.activeConnectionProfileId ?? profile.id);
@@ -98,8 +101,8 @@ export function ConnectionProfilesCard({
           Connection profiles
         </CardTitle>
         <CardDescription>
-          Pair a Hostinger VPS target with a label. API keys stay in the OS
-          keychain.
+          Pair a VPS target from a provider with a label. API keys stay in the
+          OS keychain.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -134,7 +137,7 @@ export function ConnectionProfilesCard({
           </ul>
         )}
 
-        <div className="grid gap-4 md:grid-cols-[1fr_160px_auto] md:items-end">
+        <div className="grid gap-4 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
           <div className="space-y-2">
             <Label htmlFor="profile-label">Label</Label>
             <Input
@@ -153,6 +156,23 @@ export function ConnectionProfilesCard({
               onChange={(event) => setVirtualMachineId(event.target.value)}
               placeholder="123456"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="profile-provider">Provider</Label>
+            <select
+              id="profile-provider"
+              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              value={provider}
+              onChange={(event) => {
+                const parsed = providerIdSchema.safeParse(event.target.value);
+                if (parsed.success) {
+                  setProvider(parsed.data);
+                }
+              }}
+            >
+              <option value="hostinger">Hostinger</option>
+              <option value="digitalocean">DigitalOcean</option>
+            </select>
           </div>
           <Button type="button" onClick={handleAdd} disabled={saveMutation.isPending}>
             <Plus className="size-4" />

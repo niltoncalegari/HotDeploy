@@ -12,18 +12,24 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getProjectLogs, parseHostingerError } from "@/lib/hostinger/client";
+import type { ProviderId } from "@/lib/workspace/schemas";
 
 interface LogsPanelProps {
   virtualMachineId: number;
   projectName: string;
+  provider: ProviderId;
 }
 
-export function LogsPanel({ virtualMachineId, projectName }: LogsPanelProps) {
+export function LogsPanel({
+  virtualMachineId,
+  projectName,
+  provider,
+}: LogsPanelProps) {
   const [serviceFilter, setServiceFilter] = useState<string>("all");
 
   const { data: logs = [], isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["project-logs", virtualMachineId, projectName],
-    queryFn: () => getProjectLogs(virtualMachineId, projectName),
+    queryKey: ["project-logs", virtualMachineId, projectName, provider],
+    queryFn: () => getProjectLogs(virtualMachineId, projectName, provider),
   });
 
   const services = useMemo(

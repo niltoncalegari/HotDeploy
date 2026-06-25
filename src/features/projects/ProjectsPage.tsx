@@ -37,13 +37,14 @@ const DEPLOY_POLL_MAX_ATTEMPTS = 20;
 async function waitForProjectRunning(
   virtualMachineId: number,
   dockerProjectName: string,
+  provider: "hostinger" | "digitalocean",
 ): Promise<boolean> {
   for (let attempt = 0; attempt < DEPLOY_POLL_MAX_ATTEMPTS; attempt += 1) {
     await new Promise((resolve) => {
       setTimeout(resolve, DEPLOY_POLL_INTERVAL_MS);
     });
 
-    const projects = await listProjects(virtualMachineId);
+    const projects = await listProjects(virtualMachineId, provider);
     const match = projects.find((project) => project.name === dockerProjectName);
 
     if (match?.state.toLowerCase() === "running") {
@@ -67,6 +68,8 @@ export function ProjectsPage() {
     queryFn: getCredentialsStatus,
   });
 
+  const provider = activeProfile?.provider ?? "hostinger";
+
   const {
     data: remoteProjects = [],
     isLoading,
@@ -74,8 +77,8 @@ export function ProjectsPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["projects", activeProfile?.virtualMachineId],
-    queryFn: () => listProjects(activeProfile!.virtualMachineId),
+    queryKey: ["projects", activeProfile?.virtualMachineId, provider],
+    queryFn: () => listProjects(activeProfile!.virtualMachineId, provider),
     enabled: Boolean(activeProfile && credentials?.configured),
     retry: false,
   });
@@ -94,6 +97,7 @@ export function ProjectsPage() {
         const running = await waitForProjectRunning(
           activeProfile.virtualMachineId,
           deployed.dockerProjectName,
+          activeProfile.provider,
         );
         if (running) {
           toast.success(`${deployed.dockerProjectName} is running.`);
