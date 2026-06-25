@@ -12,6 +12,7 @@ import {
   listProjects,
   listVirtualMachines,
   parseHostingerError,
+  previewListVirtualMachines,
   restartProject,
   saveCredentials,
   startProject,
@@ -55,6 +56,12 @@ describe("hostinger client", () => {
   it("invokes list and connection commands", async () => {
     mockedInvoke.mockResolvedValueOnce([{ id: 1, hostname: "srv1", state: "running" }]);
     await listVirtualMachines();
+
+    mockedInvoke.mockResolvedValueOnce([{ id: 2, hostname: "srv2", state: "running" }]);
+    await previewListVirtualMachines("preview-key");
+    expect(mockedInvoke).toHaveBeenCalledWith("preview_list_vms", {
+      apiKey: "preview-key",
+    });
 
     mockedInvoke.mockResolvedValueOnce({
       connected: true,
