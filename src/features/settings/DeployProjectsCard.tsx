@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FolderKanban, Plus, Trash2 } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -30,7 +31,11 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
   const [name, setName] = useState("");
   const [connectionProfileId, setConnectionProfileId] = useState("");
   const [dockerProjectName, setDockerProjectName] = useState("");
+  const [deploySourceType, setDeploySourceType] = useState<"local" | "github">(
+    "local",
+  );
   const [composeFilePath, setComposeFilePath] = useState("");
+  const [repositoryUrl, setRepositoryUrl] = useState("");
   const [environmentProfile, setEnvironmentProfile] = useState("");
 
   const saveMutation = useMutation({
@@ -50,6 +55,22 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
     saveMutation.mutate(nextConfig);
   };
 
+  const handlePickComposeFile = async () => {
+    const selected = await open({
+      multiple: false,
+      filters: [
+        {
+          name: "Docker Compose",
+          extensions: ["yaml", "yml"],
+        },
+      ],
+    });
+
+    if (typeof selected === "string") {
+      setComposeFilePath(selected);
+    }
+  };
+
   const handleAdd = () => {
     if (workspace.connectionProfiles.length === 0) {
       toast.error("Add a connection profile before creating deploy projects.");
@@ -59,13 +80,18 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
     const profileId =
       connectionProfileId || workspace.connectionProfiles[0]?.id || "";
 
-    if (
-      !name.trim() ||
-      !profileId ||
-      !dockerProjectName.trim() ||
-      !composeFilePath.trim()
-    ) {
-      toast.error("Fill in name, VPS profile, project name, and compose path.");
+    if (!name.trim() || !profileId || !dockerProjectName.trim()) {
+      toast.error("Fill in name, VPS profile, and Docker project name.");
+      return;
+    }
+
+    if (deploySourceType === "local" && !composeFilePath.trim()) {
+      toast.error("Select a local compose file.");
+      return;
+    }
+
+    if (deploySourceType === "github" && !repositoryUrl.trim()) {
+      toast.error("Enter a GitHub repository URL.");
       return;
     }
 
@@ -73,10 +99,10 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
       name: name.trim(),
       connectionProfileId: profileId,
       dockerProjectName: dockerProjectName.trim(),
-      deploySource: {
-        type: "local",
-        composeFilePath: composeFilePath.trim(),
-      },
+      deploySource:
+        deploySourceType === "local"
+          ? { type: "local", composeFilePath: composeFilePath.trim() }
+          : { type: "github", repositoryUrl: repositoryUrl.trim() },
       environmentProfile: environmentProfile.trim() || undefined,
     });
 
@@ -84,6 +110,7 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
     setName("");
     setDockerProjectName("");
     setComposeFilePath("");
+    setRepositoryUrl("");
     setEnvironmentProfile("");
     toast.success("Deploy project saved.");
   };
@@ -103,7 +130,8 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
           Deploy projects
         </CardTitle>
         <CardDescription>
-          Register local Compose files to deploy on a configured VPS target.
+          Register Compose files or GitHub repos to deploy on a configured VPS
+          target.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -131,7 +159,7 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
                     <p className="text-muted-foreground text-sm">
                       VPS: {profile?.label ?? "Unknown profile"}
                     </p>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-muted-foreground text-sm break-all">
                       {project.deploySource.type === "local"
                         ? project.deploySource.composeFilePath
                         : project.deploySource.repositoryUrl}
@@ -188,14 +216,45 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="compose-file-path">Compose file path</Label>
-            <Input
-              id="compose-file-path"
-              value={composeFilePath}
-              onChange={(event) => setComposeFilePath(event.target.value)}
-              placeholder="/Users/me/app/docker-compose.yaml"
-            />
+            <Label htmlFor="deploy-source-type">Deploy source</Label>
+            <select
+              id="deploy-source-type"
+              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              value={deploySourceType}
+              onChange={(event) =>
+                setDeploySourceType(event.target.value as "local" | "github")
+              }
+            >
+              <option value="local">Local compose file</option>
+              <option value="github">GitHub repository</option>
+            </select>
           </div>
+          {deploySourceType === "local" ? (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="compose-file-path">Compose file path</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="compose-file-path"
+                  value={composeFilePath}
+                  onChange={(event) => setComposeFilePath(event.target.value)}
+                  placeholder="/Users/me/app/docker-compose.yaml"
+                />
+                <Button type="button" variant="outline" onClick={handlePickComposeFile}>
+                  Browse
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="repository-url">GitHub repository URL</Label>
+              <Input
+                id="repository-url"
+                value={repositoryUrl}
+                onChange={(event) => setRepositoryUrl(event.target.value)}
+                placeholder="https://github.com/user/mflow"
+              />
+            </div>
+          )}
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="environment-profile">
               Environment profile (optional)
