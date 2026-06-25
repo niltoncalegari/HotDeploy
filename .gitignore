@@ -15,6 +15,10 @@ dist-ssr
 coverage
 src-tauri/target
 
+# Mobile icon outputs from `tauri icon` (desktop v1 only)
+src-tauri/icons/ios/
+src-tauri/icons/android/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
