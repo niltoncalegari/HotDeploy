@@ -42,6 +42,16 @@ pub async fn list_vms() -> Result<Vec<VirtualMachine>, String> {
 }
 
 #[tauri::command]
+pub async fn preview_list_vms(api_key: String) -> Result<Vec<VirtualMachine>, String> {
+    if api_key.trim().is_empty() {
+        return Err(String::from(HostingerError::NotConfigured));
+    }
+
+    let client = HostingerClient::new(api_key.trim().to_string());
+    client.list_virtual_machines().await.map_err(String::from)
+}
+
+#[tauri::command]
 pub async fn test_connection(virtual_machine_id: u64) -> Result<ConnectionTestResult, String> {
     let client = client_from_credentials()?;
     client

@@ -82,6 +82,12 @@ export async function listVirtualMachines(): Promise<VirtualMachine[]> {
   return invoke<VirtualMachine[]>("list_vms");
 }
 
+export async function previewListVirtualMachines(
+  apiKey: string,
+): Promise<VirtualMachine[]> {
+  return invoke<VirtualMachine[]>("preview_list_vms", { apiKey });
+}
+
 export async function testConnection(
   virtualMachineId: number,
 ): Promise<ConnectionTestResult> {
