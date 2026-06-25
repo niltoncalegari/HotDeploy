@@ -119,8 +119,9 @@ Full reference: `.agents/skills/hostinger-api/SKILL.md`.
 
 | Phase | Provider support |
 |---|---|
-| 1–4 | Hostinger only |
-| 5+ | Additional VPS providers behind a Provider adapter interface |
+| 1–5 | Hostinger only (production path) |
+| 6.A | Hostinger + DigitalOcean droplet listing via `VpsProvider` adapter |
+| 6.B+ | Additional VPS providers behind the same adapter |
 
 When adding a provider, update this file and add an ADR under `docs/adr/`.
 
@@ -130,7 +131,7 @@ When adding a provider, update this file and add an ADR under `docs/adr/`.
 - Hosted HotDeploy backend
 - Direct SSH / docker CLI on the VPS
 - Non-Docker workloads
-- Production code signing / auto-update (documented in RUNBOOK, shipped later)
+- Production code signing / auto-update (documented in RUNBOOK; updater scaffolded, signing certs user-provided)
 
 ## Ubiquitous language checklist for agents
 

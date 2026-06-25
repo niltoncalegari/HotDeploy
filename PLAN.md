@@ -43,4 +43,4 @@ Branch pattern: `feat/slice-1a-hostinger-connection`
 
 ## Current status
 
-**Phases 0–5 — shipped.** Specs 000–010 complete. Phase 6 (multi-provider) is next.
+**Phases 0–5 — shipped.** Specs 000–010 complete. Phase 6.A (provider adapter) in progress via spec 011.
