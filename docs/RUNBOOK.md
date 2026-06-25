@@ -79,8 +79,41 @@ After changing icons, restart `pnpm tauri:dev` so Cargo re-embeds `icon.icns` / 
 Before public distribution:
 
 - [ ] Code signing (macOS notarization, Windows Authenticode)
-- [ ] Tauri updater configuration
-- [ ] Tighten CSP in `tauri.conf.json`
+- [x] Tauri updater plugin scaffold (`active: false` until pubkey is set)
+- [x] Production CSP in `tauri.conf.json`
+
+### Code signing
+
+| Platform | Requirement | Env / config |
+|---|---|---|
+| macOS | Apple Developer ID + notarization | `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
+| Windows | Authenticode certificate | `TAURI_SIGNING_PRIVATE_KEY` or `certificateThumbprint` in `tauri.conf.json` |
+
+Run production builds only on trusted CI runners with secrets injected from a vault — never commit certificates.
+
+```bash
+# macOS example (after certificates are installed in keychain)
+pnpm tauri:build
+```
+
+### Auto-updater
+
+1. Generate signing keys: `pnpm tauri signer generate -w ~/.tauri/hotdeploy.key`
+2. Set `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`
+3. Set `plugins.updater.active` to `true` when the release CDN is ready
+4. Publish update artifacts to the endpoint template in `tauri.conf.json`
+
+Updater stays **disabled** in local dev until a pubkey and release endpoint are configured.
+
+### Content Security Policy
+
+Production CSP allows:
+
+- `connect-src` to Hostinger and DigitalOcean APIs
+- `ipc:` for Tauri IPC
+- `http://localhost:*` / `ws://localhost:*` for Vite dev (remove for strict production builds if needed)
+
+Tighten further before store distribution if the app does not load remote assets.
 
 ## Troubleshooting
 

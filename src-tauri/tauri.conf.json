@@ -21,7 +21,16 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.hostinger.com https://api.digitalocean.com ipc: http://localhost:* ws://localhost:*; img-src 'self' data: asset: https://asset.localhost"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": false,
+      "endpoints": [
+        "https://releases.hotdeploy.app/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "pubkey": ""
     }
   },
   "bundle": {
