@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "HotDeploy",
         "width": 1200,
         "height": 800,
@@ -27,6 +28,7 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/icon.png",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",

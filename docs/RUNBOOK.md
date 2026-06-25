@@ -63,13 +63,16 @@ Never commit API keys. Never store keys in `tauri-plugin-store`.
 ## Icons
 
 Brand flame SVG: `src/assets/brand/flame.svg`  
-Bundle icons: `src-tauri/icons/` (replace with flame-themed assets before public release)
+App icon source: `src/assets/brand/app-icon.svg` (rounded squircle on black, orange outline flame)  
+Bundle icons: `src-tauri/icons/` (regenerate from `app-icon.svg` when the mark changes)
 
 Regenerate Tauri icons from SVG:
 
 ```bash
-pnpm tauri icon src/assets/brand/flame.svg
+pnpm tauri icon src/assets/brand/app-icon.svg
 ```
+
+After changing icons, restart `pnpm tauri:dev` so Cargo re-embeds `icon.icns` / `icon.ico` for the Dock and taskbar.
 
 ## Release (future)
 
