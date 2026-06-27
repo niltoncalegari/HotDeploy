@@ -1,7 +1,7 @@
 import { Flame, FolderKanban, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-import { APP_VERSION } from "@/lib/app-version";
+import { VersionChangelogDialog } from "@/components/layout/VersionChangelogDialog";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -39,7 +39,7 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="text-muted-foreground border-t px-4 py-3 text-xs">
-        Hostinger-first · v{APP_VERSION}
+        <VersionChangelogDialog />
       </div>
     </aside>
   );

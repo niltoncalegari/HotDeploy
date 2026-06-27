@@ -7,6 +7,13 @@ export interface ReleaseNotes {
 /** User-facing release notes — newest first. Keep in sync with package.json on each bump. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
   {
+    version: "0.8.3",
+    features: [
+      "Release notes dialog opened from the sidebar version label",
+      "Version label shows semver only (removed Hostinger-first prefix)",
+    ],
+  },
+  {
     version: "0.8.2",
     features: [
       "Onboarding welcome checkbox to skip setup and not show the wizard again",
