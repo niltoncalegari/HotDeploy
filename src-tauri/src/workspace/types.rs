@@ -50,6 +50,10 @@ pub struct DeployProjectConfig {
     pub environment_profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_link: Option<GitHubLink>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_deploy_on_push: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_deploy_last_run_id: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -72,6 +76,8 @@ pub struct WorkspaceConfig {
     pub active_connection_profile_id: Option<String>,
     #[serde(default)]
     pub deploy_projects: Vec<DeployProjectConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onboarding_completed: Option<bool>,
 }
 
 impl Default for WorkspaceConfig {
@@ -84,6 +90,7 @@ impl Default for WorkspaceConfig {
             connection_profiles: Vec::new(),
             active_connection_profile_id: None,
             deploy_projects: Vec::new(),
+            onboarding_completed: None,
         }
     }
 }

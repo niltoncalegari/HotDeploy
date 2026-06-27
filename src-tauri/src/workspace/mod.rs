@@ -88,7 +88,10 @@ mod tests {
                 },
                 environment_profile: Some("NODE_ENV=production".to_string()),
                 github_link: None,
+                auto_deploy_on_push: None,
+                auto_deploy_last_run_id: None,
             }],
+            onboarding_completed: None,
         };
 
         let json = serde_json::to_string_pretty(&config).expect("serialize workspace");

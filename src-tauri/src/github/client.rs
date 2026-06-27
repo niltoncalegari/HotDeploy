@@ -7,8 +7,8 @@ use super::error::GitHubError;
 use super::runner::parse_github_repo_url;
 use super::secrets::encrypt_secret_value;
 use super::types::{
-    CommitWorkflowResult, GitHubConnectionTest, GitHubRepo, GitHubSecretMeta, GitHubVariable,
-    RunnerRegistrationToken,
+    AutoDeployCheckResult, CommitWorkflowResult, GitHubConnectionTest, GitHubEnvironment,
+    GitHubRepo, GitHubSecretMeta, GitHubVariable, RunnerRegistrationToken, WorkflowRunSummary,
 };
 
 pub const GITHUB_API_BASE: &str = "https://api.github.com";
@@ -232,6 +232,112 @@ impl GitHubClient {
         })
     }
 
+    pub async fn get_runner_remove_token(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<RunnerRegistrationToken, GitHubError> {
+        let path = format!("/repos/{owner}/{repo}/actions/runners/remove-token");
+        let response = self.post(&path, &serde_json::json!({})).await?;
+        let payload: ApiRegistrationToken = response.json().await.map_err(map_json_error)?;
+        Ok(RunnerRegistrationToken {
+            token: payload.token,
+            expires_at: payload.expires_at,
+        })
+    }
+
+    pub async fn list_environments(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Vec<GitHubEnvironment>, GitHubError> {
+        let path = format!("/repos/{owner}/{repo}/environments");
+        let response = self.get(&path).await?;
+        let payload: ApiEnvironmentsList = response.json().await.map_err(map_json_error)?;
+
+        Ok(payload
+            .environments
+            .into_iter()
+            .map(|env| GitHubEnvironment {
+                name: env.name,
+                html_url: env.html_url,
+            })
+            .collect())
+    }
+
+    pub async fn create_environment(
+        &self,
+        owner: &str,
+        repo: &str,
+        name: &str,
+    ) -> Result<GitHubEnvironment, GitHubError> {
+        let path = format!("/repos/{owner}/{repo}/environments/{name}");
+        let response = self.put(&path, &serde_json::json!({})).await?;
+        let payload: ApiEnvironment = response.json().await.map_err(map_json_error)?;
+        Ok(GitHubEnvironment {
+            name: payload.name,
+            html_url: payload.html_url,
+        })
+    }
+
+    pub async fn delete_environment(
+        &self,
+        owner: &str,
+        repo: &str,
+        name: &str,
+    ) -> Result<(), GitHubError> {
+        let path = format!("/repos/{owner}/{repo}/environments/{name}");
+        self.delete(&path).await
+    }
+
+    pub async fn latest_successful_run_on_branch(
+        &self,
+        owner: &str,
+        repo: &str,
+        branch: &str,
+    ) -> Result<Option<WorkflowRunSummary>, GitHubError> {
+        let path = format!(
+            "/repos/{owner}/{repo}/actions/runs?branch={branch}&status=completed&per_page=5"
+        );
+        let response = self.get(&path).await?;
+        let payload: ApiWorkflowRunsList = response.json().await.map_err(map_json_error)?;
+
+        Ok(payload
+            .workflow_runs
+            .into_iter()
+            .find(|run| run.conclusion.as_deref() == Some("success"))
+            .map(|run| WorkflowRunSummary {
+                id: run.id,
+                status: run.status,
+                conclusion: run.conclusion,
+                head_branch: run.head_branch,
+                html_url: run.html_url,
+            }))
+    }
+
+    pub fn evaluate_auto_deploy(
+        run: Option<&WorkflowRunSummary>,
+        last_deployed_run_id: Option<u64>,
+    ) -> AutoDeployCheckResult {
+        match run {
+            Some(summary) if Some(summary.id) != last_deployed_run_id => AutoDeployCheckResult {
+                should_deploy: true,
+                run_id: Some(summary.id),
+                message: format!("Successful workflow run {} ready to deploy", summary.id),
+            },
+            Some(summary) => AutoDeployCheckResult {
+                should_deploy: false,
+                run_id: Some(summary.id),
+                message: "Already deployed latest successful run".to_string(),
+            },
+            None => AutoDeployCheckResult {
+                should_deploy: false,
+                run_id: None,
+                message: "No successful workflow run on default branch".to_string(),
+            },
+        }
+    }
+
     async fn get_file_sha(&self, owner: &str, repo: &str) -> Result<Option<String>, GitHubError> {
         let path = format!("/repos/{owner}/{repo}/contents/.github/workflows/hotdeploy.yml");
         let response = self
@@ -425,6 +531,31 @@ struct ApiRegistrationToken {
     expires_at: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ApiEnvironmentsList {
+    environments: Vec<ApiEnvironment>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiEnvironment {
+    name: String,
+    html_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiWorkflowRunsList {
+    workflow_runs: Vec<ApiWorkflowRun>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiWorkflowRun {
+    id: u64,
+    status: String,
+    conclusion: Option<String>,
+    head_branch: String,
+    html_url: String,
+}
+
 fn map_request_error(error: reqwest::Error) -> GitHubError {
     GitHubError::Request(error.to_string())
 }
@@ -444,12 +575,26 @@ fn map_json_error(error: reqwest::Error) -> GitHubError {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_repo_from_url;
+    use super::{parse_repo_from_url, GitHubClient};
+    use crate::github::types::WorkflowRunSummary;
 
     #[test]
     fn parse_repo_helper_delegates() {
         let (owner, repo) = parse_repo_from_url("https://github.com/o/r").expect("ok");
         assert_eq!(owner, "o");
         assert_eq!(repo, "r");
+    }
+
+    #[test]
+    fn auto_deploy_when_new_run() {
+        let run = WorkflowRunSummary {
+            id: 99,
+            status: "completed".into(),
+            conclusion: Some("success".into()),
+            head_branch: "main".into(),
+            html_url: "https://github.com".into(),
+        };
+        let result = GitHubClient::evaluate_auto_deploy(Some(&run), Some(1));
+        assert!(result.should_deploy);
     }
 }

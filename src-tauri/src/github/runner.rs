@@ -40,6 +40,28 @@ echo hotdeploy-runner-installed:{name}
     )
 }
 
+pub fn uninstall_runner_script(owner: &str, repo: &str, vm_id: u64, remove_token: &str) -> String {
+    let name = runner_name(owner, repo, vm_id);
+    format!(
+        r#"set -euo pipefail
+RUNNER_USER="${{RUNNER_USER:-github-runner}}"
+RUNNER_HOME="/home/${{RUNNER_USER}}/actions-runner"
+if [ -d "$RUNNER_HOME" ] && [ -f "$RUNNER_HOME/config.sh" ]; then
+  cd "$RUNNER_HOME"
+  ./svc.sh stop || true
+  ./config.sh remove --token {token} || true
+fi
+echo hotdeploy-runner-uninstalled:{name}
+"#,
+        token = remove_token,
+        name = name,
+    )
+}
+
+pub fn parse_uninstall_output(output: &str) -> bool {
+    output.contains("hotdeploy-runner-uninstalled:")
+}
+
 pub fn runner_status_script(owner: &str, repo: &str, vm_id: u64) -> String {
     let name = runner_name(owner, repo, vm_id);
     format!(
@@ -130,5 +152,20 @@ mod tests {
             runner_name("Acme", "Widget", 42),
             "hotdeploy-acme-widget-42"
         );
+    }
+
+    #[test]
+    fn uninstall_script_contains_config_remove() {
+        let script = super::uninstall_runner_script("acme", "widget", 1, "remove-token");
+        assert!(script.contains("config.sh remove"));
+        assert!(script.contains("remove-token"));
+    }
+
+    #[test]
+    fn parse_uninstall_output_detects_success() {
+        assert!(super::parse_uninstall_output(
+            "hotdeploy-runner-uninstalled:hotdeploy-acme-widget-1"
+        ));
+        assert!(!super::parse_uninstall_output("error"));
     }
 }

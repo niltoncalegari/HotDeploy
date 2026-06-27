@@ -3,8 +3,11 @@ use tauri::AppHandle;
 use crate::credentials::{
     clear_ssh_credentials, load_ssh_credentials, save_ssh_credentials, ssh_configured,
 };
-use crate::github::runner::{install_runner_script, parse_runner_status_output, runner_name};
-use crate::github::types::{RunnerInstallResult, RunnerState, RunnerStatus};
+use crate::github::runner::{
+    install_runner_script, parse_runner_status_output, parse_uninstall_output, runner_name,
+    uninstall_runner_script,
+};
+use crate::github::types::{RunnerInstallResult, RunnerState, RunnerStatus, RunnerUninstallResult};
 use crate::hostinger::client::HostingerClient;
 use crate::provider::registry::build_provider;
 use crate::ssh::{run_ssh_command, test_ssh_echo, SshError};
@@ -90,6 +93,45 @@ pub async fn install_runner_for_profile(
             .to_string(),
         runner_name: name,
     })
+}
+
+pub async fn uninstall_runner_for_profile(
+    app: &AppHandle,
+    profile_id: String,
+    owner: String,
+    repo: String,
+) -> Result<RunnerUninstallResult, String> {
+    let (host, username, private_key) = resolve_ssh_target(app, &profile_id).await?;
+    let client = crate::commands::github::client_from_app_public(app)?;
+    let token = client
+        .get_runner_remove_token(&owner, &repo)
+        .await
+        .map_err(String::from)?;
+
+    let vm_id = workspace_profile_vm_id(app, &profile_id)?;
+    let script = uninstall_runner_script(&owner, &repo, vm_id, &token.token);
+    let output =
+        run_ssh_command(&host, 22, &username, &private_key, &script).map_err(String::from)?;
+
+    let name = runner_name(&owner, &repo, vm_id);
+    Ok(RunnerUninstallResult {
+        success: parse_uninstall_output(&output),
+        message: output
+            .lines()
+            .last()
+            .unwrap_or("Runner uninstall completed")
+            .to_string(),
+        runner_name: name,
+    })
+}
+
+pub async fn rotate_runner_for_profile(
+    app: &AppHandle,
+    profile_id: String,
+    owner: String,
+    repo: String,
+) -> Result<RunnerInstallResult, String> {
+    install_runner_for_profile(app, profile_id, owner, repo).await
 }
 
 pub async fn runner_status_for_profile(

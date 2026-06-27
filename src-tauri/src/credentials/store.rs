@@ -23,6 +23,8 @@ struct CredentialFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     github_pat: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    github_auth_method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     ssh_private_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     ssh_username: Option<String>,
@@ -259,12 +261,31 @@ pub fn save_github_pat(app: &AppHandle, pat: &str) -> Result<(), CredentialStore
     }
     let mut credentials = read_file(app)?;
     credentials.github_pat = Some(pat.trim().to_string());
+    credentials.github_auth_method = Some("pat".to_string());
     write_file(app, &credentials)
+}
+
+pub fn save_github_app_token(app: &AppHandle, token: &str) -> Result<(), CredentialStoreError> {
+    if token.trim().is_empty() {
+        return Err(CredentialStoreError::Write(
+            "GitHub token is required".to_string(),
+        ));
+    }
+    let mut credentials = read_file(app)?;
+    credentials.github_pat = Some(token.trim().to_string());
+    credentials.github_auth_method = Some("app".to_string());
+    write_file(app, &credentials)
+}
+
+pub fn get_github_auth_method(app: &AppHandle) -> Result<Option<String>, CredentialStoreError> {
+    let credentials = read_file(app)?;
+    Ok(credentials.github_auth_method)
 }
 
 pub fn clear_github_pat(app: &AppHandle) -> Result<(), CredentialStoreError> {
     let mut credentials = read_file(app)?;
     credentials.github_pat = None;
+    credentials.github_auth_method = None;
     if credentials.hostinger_api_key.is_none()
         && credentials.digitalocean_api_key.is_none()
         && credentials.hostinger_virtual_machine_id.is_none()
@@ -368,6 +389,7 @@ mod tests {
             digitalocean_api_key: None,
             hostinger_virtual_machine_id: Some(42),
             github_pat: None,
+            github_auth_method: None,
             ssh_private_key: None,
             ssh_username: None,
         };

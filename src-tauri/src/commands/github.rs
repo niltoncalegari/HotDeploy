@@ -1,12 +1,18 @@
 use tauri::AppHandle;
 
 use crate::credentials::{
-    clear_github_pat, github_pat_configured, load_github_pat, save_github_pat,
+    clear_github_pat, get_github_auth_method, github_pat_configured, load_github_pat,
+    save_github_app_token, save_github_pat,
 };
 use crate::github::client::GitHubClient;
+use crate::github::env_profile::parse_env_profile;
+use crate::github::oauth::DeviceFlowStart;
+use crate::github::oauth::{poll_device_token, start_device_flow};
 use crate::github::types::{
-    CommitWorkflowResult, GitHubConnectionTest, GitHubRepo, GitHubSecretMeta, GitHubStatus,
-    GitHubVariable, RunnerInstallResult, RunnerRegistrationToken, RunnerStatus, WorkflowOptions,
+    AutoDeployCheckResult, CommitWorkflowResult, EnvProfileSyncResult, GitHubAuthMethod,
+    GitHubConnectionTest, GitHubEnvironment, GitHubRepo, GitHubSecretMeta, GitHubStatus,
+    GitHubVariable, RunnerInstallResult, RunnerRegistrationToken, RunnerStatus,
+    RunnerUninstallResult, WorkflowOptions,
 };
 use crate::github::workflow::generate_workflow_yaml;
 
@@ -207,6 +213,154 @@ pub async fn get_runner_status(
 }
 
 #[tauri::command]
+pub async fn uninstall_self_hosted_runner(
+    app: AppHandle,
+    profile_id: String,
+    owner: String,
+    repo: String,
+) -> Result<RunnerUninstallResult, String> {
+    crate::commands::ssh::uninstall_runner_for_profile(&app, profile_id, owner, repo).await
+}
+
+#[tauri::command]
+pub async fn rotate_runner_registration(
+    app: AppHandle,
+    profile_id: String,
+    owner: String,
+    repo: String,
+) -> Result<RunnerInstallResult, String> {
+    crate::commands::ssh::rotate_runner_for_profile(&app, profile_id, owner, repo).await
+}
+
+#[tauri::command]
 pub fn parse_github_repo_url_command(url: String) -> Result<(String, String), String> {
     crate::github::client::parse_repo_from_url(&url).map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn sync_env_profile_to_github_secrets(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    environment_profile: String,
+    keys: Vec<String>,
+) -> Result<EnvProfileSyncResult, String> {
+    let client = github_client_from_app(&app)?;
+    let pairs = parse_env_profile(&environment_profile);
+    let key_set: std::collections::HashSet<&str> = keys.iter().map(String::as_str).collect();
+
+    let mut imported = Vec::new();
+    let mut skipped = Vec::new();
+
+    for (key, value) in pairs {
+        if !key_set.contains(key.as_str()) {
+            skipped.push(key);
+            continue;
+        }
+        client
+            .upsert_secret(&owner, &repo, &key, &value)
+            .await
+            .map_err(String::from)?;
+        imported.push(key);
+    }
+
+    Ok(EnvProfileSyncResult { imported, skipped })
+}
+
+#[tauri::command]
+pub async fn list_github_environments(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+) -> Result<Vec<GitHubEnvironment>, String> {
+    let client = github_client_from_app(&app)?;
+    client
+        .list_environments(&owner, &repo)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn create_github_environment(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    name: String,
+) -> Result<GitHubEnvironment, String> {
+    let client = github_client_from_app(&app)?;
+    client
+        .create_environment(&owner, &repo, &name)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn delete_github_environment(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    name: String,
+) -> Result<(), String> {
+    let client = github_client_from_app(&app)?;
+    client
+        .delete_environment(&owner, &repo, &name)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn check_auto_deploy_run(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    branch: String,
+    last_deployed_run_id: Option<u64>,
+) -> Result<AutoDeployCheckResult, String> {
+    let client = github_client_from_app(&app)?;
+    let run = client
+        .latest_successful_run_on_branch(&owner, &repo, &branch)
+        .await
+        .map_err(String::from)?;
+    Ok(GitHubClient::evaluate_auto_deploy(
+        run.as_ref(),
+        last_deployed_run_id,
+    ))
+}
+
+#[tauri::command]
+pub async fn start_github_device_flow() -> Result<DeviceFlowStart, String> {
+    start_device_flow().await.map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn poll_github_device_token(
+    app: AppHandle,
+    device_code: String,
+) -> Result<GitHubStatus, String> {
+    match poll_device_token(&device_code)
+        .await
+        .map_err(String::from)?
+    {
+        Some(token) => {
+            save_github_app_token(&app, &token).map_err(String::from)?;
+            let client = GitHubClient::new(token);
+            let login = client.current_login().await.ok();
+            Ok(GitHubStatus {
+                connected: true,
+                login,
+            })
+        }
+        None => Ok(GitHubStatus {
+            connected: false,
+            login: None,
+        }),
+    }
+}
+
+#[tauri::command]
+pub fn get_github_auth_method_command(app: AppHandle) -> Result<GitHubAuthMethod, String> {
+    let method = get_github_auth_method(&app)
+        .map_err(String::from)?
+        .unwrap_or_else(|| "none".to_string());
+    Ok(GitHubAuthMethod { method })
 }

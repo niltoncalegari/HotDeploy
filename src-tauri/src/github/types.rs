@@ -67,6 +67,14 @@ pub struct RunnerRegistrationToken {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RunnerUninstallResult {
+    pub success: bool,
+    pub message: String,
+    pub runner_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunnerInstallResult {
     pub success: bool,
     pub message: String,
@@ -89,4 +97,42 @@ pub struct RunnerStatus {
     pub state: RunnerState,
     pub message: String,
     pub runner_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubEnvironment {
+    pub name: String,
+    pub html_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvProfileSyncResult {
+    pub imported: Vec<String>,
+    pub skipped: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowRunSummary {
+    pub id: u64,
+    pub status: String,
+    pub conclusion: Option<String>,
+    pub head_branch: String,
+    pub html_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoDeployCheckResult {
+    pub should_deploy: bool,
+    pub run_id: Option<u64>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubAuthMethod {
+    pub method: String,
 }
