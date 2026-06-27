@@ -7,6 +7,12 @@ export interface ReleaseNotes {
 /** User-facing release notes — newest first. Keep in sync with package.json on each bump. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
   {
+    version: "0.8.2",
+    features: [
+      "Onboarding welcome checkbox to skip setup and not show the wizard again",
+    ],
+  },
+  {
     version: "0.8.1",
     features: [
       "Register GitHub App in-app from Settings (device flow setup)",

@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { OnboardingWizard } from "@/features/onboarding/OnboardingWizard";
 
+const completeMutate = vi.fn();
+
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
   useQuery: ({ queryKey }: { queryKey: string[] }) => {
@@ -16,7 +18,7 @@ vi.mock("@tanstack/react-query", () => ({
     }
     return { data: undefined };
   },
-  useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useMutation: () => ({ mutate: completeMutate, isPending: false }),
 }));
 
 vi.mock("@/lib/workspace/hooks", () => ({
@@ -35,5 +37,26 @@ describe("OnboardingWizard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /get started/i }));
     expect(screen.getByLabelText(/hostinger api key/i)).toBeInTheDocument();
+  });
+
+  it("skips setup when the do-not-show-again checkbox is checked", () => {
+    completeMutate.mockClear();
+
+    render(
+      <MemoryRouter>
+        <OnboardingWizard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /don't show setup again/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /open deployment panel/i }),
+    );
+
+    expect(completeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ onboardingCompleted: true }),
+    );
   });
 });

@@ -40,6 +40,7 @@ export function OnboardingWizard() {
   const queryClient = useQueryClient();
   const { data: workspace } = useWorkspace();
   const [step, setStep] = useState(0);
+  const [skipSetup, setSkipSetup] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [vmId, setVmId] = useState("");
   const [pat, setPat] = useState("");
@@ -120,10 +121,28 @@ export function OnboardingWizard() {
         </CardHeader>
         <CardContent className="space-y-4">
           {step === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Connect your VPS provider, optionally link GitHub for CI/CD, and
-              start deploying Docker Compose projects from your desktop.
-            </p>
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-sm">
+                Connect your VPS provider, optionally link GitHub for CI/CD, and
+                start deploying Docker Compose projects from your desktop.
+              </p>
+              <div className="flex items-start gap-2">
+                <input
+                  id="onboard-skip-setup"
+                  type="checkbox"
+                  className="border-input mt-0.5 size-4 rounded border"
+                  checked={skipSetup}
+                  onChange={(event) => setSkipSetup(event.target.checked)}
+                />
+                <Label
+                  htmlFor="onboard-skip-setup"
+                  className="text-muted-foreground cursor-pointer text-sm leading-snug font-normal"
+                >
+                  Don&apos;t show setup again — skip and configure later in
+                  Settings
+                </Label>
+              </div>
+            </div>
           ) : null}
 
           {step === 1 ? (
@@ -190,18 +209,16 @@ export function OnboardingWizard() {
           ) : null}
 
           <div className="flex flex-wrap justify-between gap-2 pt-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                if (step === 0) {
-                  finish();
-                } else {
-                  setStep((value) => Math.max(0, value - 1));
-                }
-              }}
-            >
-              {step === 0 ? "Skip setup" : "Back"}
-            </Button>
+            {step > 0 ? (
+              <Button
+                variant="ghost"
+                onClick={() => setStep((value) => Math.max(0, value - 1))}
+              >
+                Back
+              </Button>
+            ) : (
+              <span />
+            )}
             {step === 1 ? (
               <Button
                 disabled={saveProviderMutation.isPending}
@@ -242,6 +259,16 @@ export function OnboardingWizard() {
             ) : step === 3 ? (
               <Button onClick={() => setStep(4)}>Continue</Button>
             ) : step === 4 ? (
+              <Button
+                disabled={completeMutation.isPending}
+                onClick={finish}
+              >
+                {completeMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
+                Open Deployment Panel
+              </Button>
+            ) : skipSetup ? (
               <Button
                 disabled={completeMutation.isPending}
                 onClick={finish}
