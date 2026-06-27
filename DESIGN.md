@@ -44,6 +44,8 @@ Use shadcn/ui primitives from `src/components/ui/`. Compose features in `src/fea
 | Status chip | `Badge` |
 | Empty state | `Card` centered with flame icon |
 | Settings form | `Card` + `Label` + `Input` |
+| Dropdown picker | `Select` (shadcn) — replaces native `<select>` |
+| Onboarding stepper | `Card` + step indicator + primary CTA per step |
 
 ## Dark mode
 

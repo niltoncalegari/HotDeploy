@@ -21,8 +21,16 @@ A virtual machine reachable through a Provider API. Phase 7+ may also use option
 _Avoid_: server, droplet (unless quoting provider docs)
 
 **GitHub Connection**:
-A GitHub Personal Access Token stored in Credential Vault, enabling repo listing and Actions API calls.
-_Avoid_: OAuth session, GitHub login
+GitHub credentials in Credential Vault — PAT or device-flow token (`authMethod: pat | app`).
+_Avoid_: OAuth session in React, GitHub login cookie
+
+**GitHub Environment**:
+A named deployment target in GitHub Actions (`staging`, `production`) with optional environment secrets.
+_Avoid_: Environment Profile (HotDeploy deploy vars)
+
+**Onboarding**:
+First-run guided wizard (`onboardingCompleted` in workspace) for provider, VPS, GitHub, and SSH setup.
+_Avoid_: tutorial overlay, product tour
 
 **Repository Link**:
 Association between a Deploy Project / Docker Project and a GitHub `owner/repo`.

@@ -26,6 +26,14 @@ Ship a dependable desktop control panel for Docker Compose deployments, starting
 | 7 — GitHub CI/CD | `7.E` | Workflow generator | Auto-create CI/CD YAML |
 | 7 — GitHub CI/CD | `7.F` | Self-hosted runner | One-click runner on VPS |
 | 7 — GitHub CI/CD | `7.G` | UX polish | Skeletons, empty states, confirmations |
+| 8 — GitHub Advanced | `8.A` | GitHub App | Device flow authentication |
+| 8 — GitHub Advanced | `8.B` | Runner ops | Uninstall + re-register runner |
+| 8 — GitHub Advanced | `8.C` | Push deploy | Workflow polling auto-deploy |
+| 8 — GitHub Advanced | `8.D` | Branch spike | Blocked — Hostinger API gap |
+| 8 — GitHub Advanced | `8.E` | Onboarding | First-run guided wizard |
+| 8 — GitHub Advanced | `8.F` | Select migration | shadcn Select replaces native `<select>` |
+| 8 — GitHub Advanced | `8.G` | Secrets sync | Environment Profile → GitHub secrets |
+| 8 — GitHub Advanced | `8.H` | Environments | GitHub Environments CRUD |
 
 ## Provider strategy
 
@@ -50,19 +58,40 @@ Branch pattern: `feat/slice-1a-hostinger-connection`
 
 ## Current status
 
-**Phases 0–6.A — shipped.** Specs 000–011 complete. **Phase 7 — shipped** via specs 015–021.
+**Phases 0–8 — shipped.** Specs 000–011, 015–029 complete. **App version:** `0.8.0` (minor = phase).
 
-## Phase 8 punch list
+## Versioning (pre-1.0)
+
+| Part | Meaning | Example |
+|---|---|---|
+| **Major** | `0` until 1.0 GA | `0`.8.0 |
+| **Minor** | Shipped roadmap **Phase** | Phase 8 → `0.8.x` |
+| **Patch** | Slice PR or fix within phase | `0.8.0` → `0.8.1` |
+
+**Source of truth:** root [`package.json`](package.json) `version` field.
+
+```bash
+# After merging a slice in the same phase
+pnpm version:bump patch
+
+# When starting a new phase (e.g. Phase 9)
+pnpm version:bump phase 9
+
+# Propagate to Cargo.toml + tauri.conf.json + api-harness
+pnpm version:sync
+```
+
+UI reads version via [`src/lib/app-version.ts`](src/lib/app-version.ts). Detail: [docs/RUNBOOK.md](docs/RUNBOOK.md#versioning).
+
+## Phase 9 punch list
 
 Candidates for the next planning cycle (not specced):
 
 | ID | Idea | Notes |
 |---|---|---|
-| 8.A | GitHub App (device flow) | Replace PAT for org-wide installs |
-| 8.B | Runner uninstall + token rotate | Complement spec 020 |
-| 8.C | Push-to-deploy webhooks | Requires hosted endpoint or polling |
-| 8.D | Branch/tag deploy pinning | Blocked on Hostinger API |
-| 8.E | Onboarding wizard | First-run guided setup |
-| 8.F | shadcn Select migration | Replace native `<select>` |
-| 8.G | Environment Profile ↔ GitHub secrets sync | One-way import |
-| 8.H | GitHub Environments support | staging/production gates |
+| 9.A | Org-wide GitHub App installations | Installation tokens for orgs |
+| 9.B | Webhook HTTP server | Real-time push-to-deploy |
+| 9.C | Bidirectional secrets sync | GitHub → Environment Profile |
+| 9.D | Branch deploy (real) | When Hostinger API supports ref |
+| 9.E | Multi-runner auto-scaling | JIT/ephemeral runners |
+| 9.F | Deploy project wizard in onboarding | Extend spec 024 |

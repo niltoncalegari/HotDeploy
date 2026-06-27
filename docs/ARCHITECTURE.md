@@ -53,7 +53,25 @@ flowchart LR
 | `hostinger/types.rs` | Serde types shared with commands |
 | `hostinger/error.rs` | Structured errors → JSON for frontend |
 | `github/client.rs` | GitHub REST (repos, secrets, Actions) |
+| `github/oauth.rs` | Device flow authentication (Phase 8) |
 | `ssh/client.rs` | Whitelisted SSH sessions (runner install) |
+
+Phase 8 adds **device flow** for GitHub App auth (no client secret in bundle) and **workflow polling** for push-to-deploy instead of a local webhook server.
+
+```mermaid
+sequenceDiagram
+    participant UI as React
+    participant Rust as Tauri
+    participant GH as GitHub API
+    UI->>Rust: start_device_flow
+    Rust->>GH: POST /login/device/code
+    GH-->>Rust: user_code
+    UI->>User: Show user_code
+    loop poll interval
+        Rust->>GH: POST /login/oauth/access_token
+    end
+    Rust-->>UI: connected
+```
 
 ### api-harness (`packages/api-harness/`)
 
