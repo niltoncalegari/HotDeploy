@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { History } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   clearDeploymentHistory,
   getDeploymentHistory,
@@ -26,6 +35,7 @@ function formatTimestamp(timestamp: string): string {
 
 export function HistoryCard() {
   const queryClient = useQueryClient();
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ["deployment-history"],
@@ -44,7 +54,7 @@ export function HistoryCard() {
   });
 
   return (
-    <Card className="md:col-span-2">
+    <Card className="md:col-span-2" id="history">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -59,7 +69,7 @@ export function HistoryCard() {
           variant="outline"
           size="sm"
           disabled={history.length === 0 || clearMutation.isPending}
-          onClick={() => clearMutation.mutate()}
+          onClick={() => setConfirmClearOpen(true)}
         >
           Clear
         </Button>
@@ -93,6 +103,32 @@ export function HistoryCard() {
           </ul>
         )}
       </CardContent>
+
+      <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear deployment history?</DialogTitle>
+            <DialogDescription>
+              This removes all local history entries. Remote Docker Projects are
+              not affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmClearOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                clearMutation.mutate();
+                setConfirmClearOpen(false);
+              }}
+            >
+              Clear history
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

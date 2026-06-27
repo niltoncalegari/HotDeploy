@@ -3,6 +3,14 @@ import { Plus, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +41,7 @@ export function ConnectionProfilesCard({
   const [label, setLabel] = useState("");
   const [virtualMachineId, setVirtualMachineId] = useState("");
   const [provider, setProvider] = useState<ProviderId>("hostinger");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
@@ -69,7 +78,11 @@ export function ConnectionProfilesCard({
     toast.success("Connection profile added.");
   };
 
-  const handleRemove = (profileId: string) => {
+  const confirmRemove = () => {
+    if (!pendingDeleteId) {
+      return;
+    }
+    const profileId = pendingDeleteId;
     const nextProfiles = workspace.connectionProfiles.filter(
       (profile) => profile.id !== profileId,
     );
@@ -90,6 +103,7 @@ export function ConnectionProfilesCard({
 
     queryClient.setQueryData(["workspace"], nextConfig);
     saveMutation.mutate(nextConfig);
+    setPendingDeleteId(null);
     toast.success("Connection profile removed.");
   };
 
@@ -127,7 +141,7 @@ export function ConnectionProfilesCard({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleRemove(profile.id)}
+                  onClick={() => setPendingDeleteId(profile.id)}
                   aria-label={`Remove ${profile.label}`}
                 >
                   <Trash2 className="size-4" />
@@ -180,6 +194,33 @@ export function ConnectionProfilesCard({
           </Button>
         </div>
       </CardContent>
+
+      <Dialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteId(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove connection profile?</DialogTitle>
+            <DialogDescription>
+              Deploy projects linked to this profile will also be removed from
+              the workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDeleteId(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmRemove}>
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

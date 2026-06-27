@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { FolderOpen, Rocket, Server } from "lucide-react";
+import { FolderOpen, GitBranch, History, Loader2, Rocket, Server } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -22,8 +22,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState, EmptyStateButton } from "@/components/ui/empty-state";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { VpsMetricsCard } from "@/features/projects/VpsMetricsCard";
+import { filterDeployProjectsForProfile, githubRepoLabel } from "@/lib/github/repo";
 import {
   deployProject,
   getCredentialsStatus,
@@ -56,6 +59,15 @@ async function waitForProjectRunning(
   return false;
 }
 
+function ProjectListSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Skeleton className="h-36 w-full" />
+      <Skeleton className="h-36 w-full" />
+    </div>
+  );
+}
+
 export function ProjectsPage() {
   const queryClient = useQueryClient();
   const activeProfile = useActiveProfile();
@@ -86,7 +98,10 @@ export function ProjectsPage() {
   });
 
   const hasActiveTarget = Boolean(activeProfile);
-  const localProjects = workspace?.deployProjects ?? [];
+  const localProjects = filterDeployProjectsForProfile(
+    workspace?.deployProjects ?? [],
+    activeProfile?.id,
+  );
 
   const deployMutation = useMutation({
     mutationFn: deployProject,
@@ -140,47 +155,49 @@ export function ProjectsPage() {
     setDeployProjectId(pickerProjectId);
   };
 
+  const providerLabel =
+    activeProfile?.provider === "digitalocean" ? "DigitalOcean" : "Hostinger";
+
   return (
     <PageLayout
       title="Projects"
       description="Docker Compose projects running on your connected VPS."
       actions={
-        <Button disabled={localProjects.length === 0} onClick={openDeployFlow}>
-          <Rocket className="size-4" />
-          Deploy project
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/settings#history">
+              <History className="size-4" />
+              History
+            </Link>
+          </Button>
+          <Button disabled={localProjects.length === 0} onClick={openDeployFlow}>
+            <Rocket className="size-4" />
+            Deploy project
+          </Button>
+        </div>
       }
     >
       <div className="flex flex-col gap-4 p-6">
         {!hasActiveTarget ? (
-          <Card className="max-w-lg">
-            <CardHeader>
-              <CardTitle>No VPS configured yet</CardTitle>
-              <CardDescription>
-                Save your Hostinger API key in Settings. HotDeploy will create
-                or sync a connection profile for the selected VPS.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline">
+          <EmptyState
+            title="No VPS configured yet"
+            description={`Save your ${providerLabel} API key in Settings. HotDeploy will create or sync a connection profile for the selected VPS.`}
+            action={
+              <EmptyStateButton asChild>
                 <Link to="/settings">Open Settings</Link>
-              </Button>
-            </CardContent>
-          </Card>
+              </EmptyStateButton>
+            }
+          />
         ) : !credentials?.configured ? (
-          <Card className="max-w-lg">
-            <CardHeader>
-              <CardTitle>Connect Hostinger API</CardTitle>
-              <CardDescription>
-                Save your API key in Settings to load remote Docker projects.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline">
+          <EmptyState
+            title="Connect your provider API"
+            description="Save your API key in Settings to load remote Docker projects."
+            action={
+              <EmptyStateButton asChild>
                 <Link to="/settings">Open Settings</Link>
-              </Button>
-            </CardContent>
-          </Card>
+              </EmptyStateButton>
+            }
+          />
         ) : (
           <>
             <div className="flex items-center justify-between gap-3">
@@ -198,7 +215,7 @@ export function ProjectsPage() {
             />
 
             {isLoading ? (
-              <p className="text-muted-foreground text-sm">Loading projects…</p>
+              <ProjectListSkeleton />
             ) : isError ? (
               <Card>
                 <CardContent className="pt-6">
@@ -208,14 +225,15 @@ export function ProjectsPage() {
                 </CardContent>
               </Card>
             ) : remoteProjects.length === 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">No Docker projects yet</CardTitle>
-                  <CardDescription>
-                    Deploy a project or register one in Settings.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <EmptyState
+                title="No Docker projects yet"
+                description="Deploy a project or register one in Settings."
+                action={
+                  <EmptyStateButton asChild>
+                    <Link to="/settings">Register deploy project</Link>
+                  </EmptyStateButton>
+                }
+              />
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {remoteProjects.map((project) => {
@@ -249,6 +267,12 @@ export function ProjectsPage() {
                         {localMatch ? (
                           <Badge variant="outline">Configured locally</Badge>
                         ) : null}
+                        {localMatch?.githubLink ? (
+                          <Badge variant="outline" className="gap-1">
+                            <GitBranch className="size-3" />
+                            {githubRepoLabel(localMatch.githubLink)}
+                          </Badge>
+                        ) : null}
                         <Button asChild variant="outline" size="sm">
                           <Link
                             to={`/projects/${encodeURIComponent(project.name)}`}
@@ -269,7 +293,7 @@ export function ProjectsPage() {
                 <CardHeader>
                   <CardTitle className="text-base">Local deploy configs</CardTitle>
                   <CardDescription>
-                    Registered Compose sources ready to deploy.
+                    Registered Compose sources for this VPS.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -284,6 +308,12 @@ export function ProjectsPage() {
                           <Server className="size-4" />
                           {project.dockerProjectName}
                         </p>
+                        {project.githubLink ? (
+                          <p className="text-muted-foreground flex items-center gap-1 text-xs">
+                            <GitBranch className="size-3" />
+                            {githubRepoLabel(project.githubLink)}
+                          </p>
+                        ) : null}
                       </div>
                       <Button
                         size="sm"
@@ -335,7 +365,7 @@ export function ProjectsPage() {
       <Dialog
         open={deployProjectId !== null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !deployMutation.isPending) {
             setDeployProjectId(null);
           }
         }}
@@ -351,6 +381,7 @@ export function ProjectsPage() {
           <DialogFooter>
             <Button
               variant="outline"
+              disabled={deployMutation.isPending}
               onClick={() => setDeployProjectId(null)}
             >
               Cancel
@@ -363,7 +394,14 @@ export function ProjectsPage() {
                 }
               }}
             >
-              Deploy now
+              {deployMutation.isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deploying…
+                </>
+              ) : (
+                "Deploy now"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
