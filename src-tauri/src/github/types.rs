@@ -136,3 +136,19 @@ pub struct AutoDeployCheckResult {
 pub struct GitHubAuthMethod {
     pub method: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubAppConfig {
+    pub configured: bool,
+    pub device_flow_ready: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubAppRegisterResult {
+    pub client_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
+    pub device_flow_ready: bool,
+}

@@ -10,11 +10,12 @@ pub use credentials::{
 };
 pub use github::{
     check_auto_deploy_run, clear_github_pat_command, commit_workflow_file,
-    create_github_environment, delete_github_environment, delete_github_secret,
-    delete_github_variable, generate_workflow_yaml_command, get_github_auth_method_command,
-    get_github_status, get_runner_registration_token, get_runner_status,
-    install_self_hosted_runner, list_github_environments, list_github_repos, list_github_secrets,
-    list_github_variables, parse_github_repo_url_command, poll_github_device_token,
+    connect_github_from_gh_cli, create_github_environment, delete_github_environment,
+    delete_github_secret, delete_github_variable, generate_workflow_yaml_command,
+    get_github_app_config_command, get_github_auth_method_command, get_github_status,
+    get_runner_registration_token, get_runner_status, install_self_hosted_runner,
+    list_github_environments, list_github_repos, list_github_secrets, list_github_variables,
+    parse_github_repo_url_command, poll_github_device_token, register_github_app_command,
     rotate_runner_registration, save_github_pat_command, start_github_device_flow,
     sync_env_profile_to_github_secrets, test_github_connection, uninstall_self_hosted_runner,
     upsert_github_secret, upsert_github_variable,

@@ -92,6 +92,15 @@ export function parseGitHubError(error: unknown): string {
   return "Unknown GitHub error";
 }
 
+export function isGitHubAppMisconfiguredError(error: unknown): boolean {
+  const message = parseGitHubError(error).toLowerCase();
+  return (
+    message.includes("not configured") ||
+    message.includes("register github app") ||
+    message.includes("invalid or not registered")
+  );
+}
+
 export async function saveGitHubPat(pat: string): Promise<void> {
   await invoke("save_github_pat_command", { pat });
 }
@@ -279,6 +288,17 @@ export interface GitHubAuthMethod {
   method: string;
 }
 
+export interface GitHubAppConfig {
+  configured: boolean;
+  deviceFlowReady: boolean;
+}
+
+export interface GitHubAppRegisterResult {
+  clientId: string;
+  slug?: string;
+  deviceFlowReady: boolean;
+}
+
 export async function syncEnvProfileToGitHubSecrets(
   owner: string,
   repo: string,
@@ -338,6 +358,10 @@ export async function startGitHubDeviceFlow(): Promise<DeviceFlowStart> {
   return invoke<DeviceFlowStart>("start_github_device_flow");
 }
 
+export async function connectGitHubFromGhCli(): Promise<GitHubStatus> {
+  return invoke<GitHubStatus>("connect_github_from_gh_cli");
+}
+
 export async function pollGitHubDeviceToken(
   deviceCode: string,
 ): Promise<GitHubStatus> {
@@ -346,4 +370,12 @@ export async function pollGitHubDeviceToken(
 
 export async function getGitHubAuthMethod(): Promise<GitHubAuthMethod> {
   return invoke<GitHubAuthMethod>("get_github_auth_method_command");
+}
+
+export async function getGitHubAppConfig(): Promise<GitHubAppConfig> {
+  return invoke<GitHubAppConfig>("get_github_app_config_command");
+}
+
+export async function registerGitHubApp(): Promise<GitHubAppRegisterResult> {
+  return invoke<GitHubAppRegisterResult>("register_github_app_command");
 }

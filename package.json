@@ -1,7 +1,7 @@
 {
   "name": "hotdeploy",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,8 @@
     "test:coverage": "vitest run --coverage",
     "quality": "bash scripts/quality-gate.sh",
     "version:sync": "node scripts/sync-version.mjs",
-    "version:bump": "node scripts/bump-version.mjs"
+    "version:bump": "node scripts/bump-version.mjs",
+    "register:github-app": "node scripts/register-github-app.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

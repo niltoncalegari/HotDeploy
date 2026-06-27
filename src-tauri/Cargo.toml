@@ -1,6 +1,6 @@
 [package]
 name = "hotdeploy"
-version = "0.8.0"
+version = "0.8.1"
 description = "HotDeploy — cross-platform Docker deployment control panel"
 authors = ["HotDeploy Contributors"]
 edition = "2021"
@@ -27,6 +27,7 @@ base64 = "0.22"
 sodiumoxide = "0.2"
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+urlencoding = "2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

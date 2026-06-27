@@ -10,6 +10,7 @@ import {
   deleteGitHubSecret,
   deleteGitHubVariable,
   generateWorkflowYaml,
+  getGitHubAppConfig,
   getGitHubAuthMethod,
   getGitHubStatus,
   getRunnerStatus,
@@ -22,6 +23,9 @@ import {
   parseGitHubError,
   parseGithubRepoUrl,
   pollGitHubDeviceToken,
+  registerGitHubApp,
+  connectGitHubFromGhCli,
+  isGitHubAppMisconfiguredError,
   rotateRunnerRegistration,
   saveGitHubPat,
   saveSshCredentials,
@@ -55,6 +59,20 @@ describe("parseGitHubError", () => {
 
   it("handles unknown error values", () => {
     expect(parseGitHubError(42)).toBe("Unknown GitHub error");
+  });
+});
+
+describe("isGitHubAppMisconfiguredError", () => {
+  it("detects missing GitHub App configuration", () => {
+    expect(
+      isGitHubAppMisconfiguredError(
+        '{"code":"request_error","message":"GitHub App is not configured. Use Register GitHub App in Settings first."}',
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores unrelated errors", () => {
+    expect(isGitHubAppMisconfiguredError("Bad credentials")).toBe(false);
   });
 });
 
@@ -166,10 +184,13 @@ describe("GitHub invoke wrappers", () => {
     await createGitHubEnvironment("o", "r", "staging");
     await deleteGitHubEnvironment("o", "r", "staging");
     await checkAutoDeployRun("o", "r", "main", 1);
+    await getGitHubAppConfig();
+    await registerGitHubApp();
     await startGitHubDeviceFlow();
+    await connectGitHubFromGhCli();
     await pollGitHubDeviceToken("device");
     await getGitHubAuthMethod();
 
-    expect(invoke).toHaveBeenCalledTimes(10);
+    expect(invoke).toHaveBeenCalledTimes(13);
   });
 });

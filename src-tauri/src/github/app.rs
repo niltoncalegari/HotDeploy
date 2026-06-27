@@ -1,2 +1,6 @@
-/// Public GitHub App client ID (device flow). Replace when registering production app.
-pub const GITHUB_APP_CLIENT_ID: &str = "Ov23liHotDeployDesktop";
+/// Placeholder used when no real GitHub App client ID is configured.
+pub const PLACEHOLDER_GITHUB_APP_CLIENT_ID: &str = "Ov23liHotDeployDesktop";
+
+/// Public GitHub App client ID for device flow.
+/// Set `GITHUB_APP_CLIENT_ID` in `.env` or run `pnpm register:github-app`.
+pub const GITHUB_APP_CLIENT_ID: &str = env!("GITHUB_APP_CLIENT_ID");

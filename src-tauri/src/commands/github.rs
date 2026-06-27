@@ -4,15 +4,18 @@ use crate::credentials::{
     clear_github_pat, get_github_auth_method, github_pat_configured, load_github_pat,
     save_github_app_token, save_github_pat,
 };
+use crate::github::app_config::resolve_github_app_client_id;
 use crate::github::client::GitHubClient;
 use crate::github::env_profile::parse_env_profile;
+use crate::github::gh_cli::read_gh_auth_token;
 use crate::github::oauth::DeviceFlowStart;
 use crate::github::oauth::{poll_device_token, start_device_flow};
+use crate::github::register::{get_github_app_config, register_github_app};
 use crate::github::types::{
-    AutoDeployCheckResult, CommitWorkflowResult, EnvProfileSyncResult, GitHubAuthMethod,
-    GitHubConnectionTest, GitHubEnvironment, GitHubRepo, GitHubSecretMeta, GitHubStatus,
-    GitHubVariable, RunnerInstallResult, RunnerRegistrationToken, RunnerStatus,
-    RunnerUninstallResult, WorkflowOptions,
+    AutoDeployCheckResult, CommitWorkflowResult, EnvProfileSyncResult, GitHubAppConfig,
+    GitHubAppRegisterResult, GitHubAuthMethod, GitHubConnectionTest, GitHubEnvironment, GitHubRepo,
+    GitHubSecretMeta, GitHubStatus, GitHubVariable, RunnerInstallResult, RunnerRegistrationToken,
+    RunnerStatus, RunnerUninstallResult, WorkflowOptions,
 };
 use crate::github::workflow::generate_workflow_yaml;
 
@@ -328,8 +331,33 @@ pub async fn check_auto_deploy_run(
 }
 
 #[tauri::command]
-pub async fn start_github_device_flow() -> Result<DeviceFlowStart, String> {
-    start_device_flow().await.map_err(String::from)
+pub async fn get_github_app_config_command(app: AppHandle) -> Result<GitHubAppConfig, String> {
+    get_github_app_config(&app).await.map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn register_github_app_command(
+    app: AppHandle,
+) -> Result<GitHubAppRegisterResult, String> {
+    register_github_app(&app).await.map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn connect_github_from_gh_cli(app: AppHandle) -> Result<GitHubStatus, String> {
+    let token = read_gh_auth_token().map_err(String::from)?;
+    save_github_app_token(&app, &token).map_err(String::from)?;
+    let client = GitHubClient::new(token);
+    let login = client.current_login().await.ok();
+    Ok(GitHubStatus {
+        connected: true,
+        login,
+    })
+}
+
+#[tauri::command]
+pub async fn start_github_device_flow(app: AppHandle) -> Result<DeviceFlowStart, String> {
+    let client_id = resolve_github_app_client_id(&app);
+    start_device_flow(&client_id).await.map_err(String::from)
 }
 
 #[tauri::command]
@@ -337,7 +365,8 @@ pub async fn poll_github_device_token(
     app: AppHandle,
     device_code: String,
 ) -> Result<GitHubStatus, String> {
-    match poll_device_token(&device_code)
+    let client_id = resolve_github_app_client_id(&app);
+    match poll_device_token(&client_id, &device_code)
         .await
         .map_err(String::from)?
     {

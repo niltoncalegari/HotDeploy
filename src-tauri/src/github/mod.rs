@@ -1,8 +1,11 @@
 pub mod app;
+pub mod app_config;
 pub mod client;
 pub mod env_profile;
 pub mod error;
+pub mod gh_cli;
 pub mod oauth;
+pub mod register;
 pub mod runner;
 pub mod secrets;
 pub mod types;

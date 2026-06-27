@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde::Deserialize;
 
-use super::app::GITHUB_APP_CLIENT_ID;
+use super::app_config::is_placeholder_client_id;
 use super::error::GitHubError;
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -29,12 +29,34 @@ struct DeviceTokenResponse {
     error: Option<String>,
 }
 
-pub async fn start_device_flow() -> Result<DeviceFlowStart, GitHubError> {
+pub async fn device_flow_works(client_id: &str) -> bool {
+    if is_placeholder_client_id(client_id) {
+        return false;
+    }
+
     let client = Client::new();
     let response = client
         .post("https://github.com/login/device/code")
         .header("Accept", "application/json")
-        .form(&[("client_id", GITHUB_APP_CLIENT_ID)])
+        .form(&[("client_id", client_id)])
+        .send()
+        .await;
+
+    matches!(response, Ok(response) if response.status().is_success())
+}
+
+pub async fn start_device_flow(client_id: &str) -> Result<DeviceFlowStart, GitHubError> {
+    if is_placeholder_client_id(client_id) {
+        return Err(GitHubError::Request(
+            "GitHub App is not configured. Use Register GitHub App in Settings first.".into(),
+        ));
+    }
+
+    let client = Client::new();
+    let response = client
+        .post("https://github.com/login/device/code")
+        .header("Accept", "application/json")
+        .form(&[("client_id", client_id)])
         .send()
         .await
         .map_err(|error| GitHubError::Request(error.to_string()))?;
@@ -42,6 +64,11 @@ pub async fn start_device_flow() -> Result<DeviceFlowStart, GitHubError> {
     if !response.status().is_success() {
         let status = response.status().as_u16();
         let message = response.text().await.unwrap_or_default();
+        if status == 404 {
+            return Err(GitHubError::Request(
+                "GitHub App client ID is invalid or not registered. Use Register GitHub App in Settings.".into(),
+            ));
+        }
         return Err(GitHubError::Api { status, message });
     }
 
@@ -59,13 +86,16 @@ pub async fn start_device_flow() -> Result<DeviceFlowStart, GitHubError> {
     })
 }
 
-pub async fn poll_device_token(device_code: &str) -> Result<Option<String>, GitHubError> {
+pub async fn poll_device_token(
+    client_id: &str,
+    device_code: &str,
+) -> Result<Option<String>, GitHubError> {
     let client = Client::new();
     let response = client
         .post("https://github.com/login/oauth/access_token")
         .header("Accept", "application/json")
         .form(&[
-            ("client_id", GITHUB_APP_CLIENT_ID),
+            ("client_id", client_id),
             ("device_code", device_code),
             ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
         ])
