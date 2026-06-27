@@ -20,6 +20,12 @@ struct CredentialFile {
     digitalocean_api_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     hostinger_virtual_machine_id: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    github_pat: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ssh_private_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ssh_username: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -198,6 +204,8 @@ pub fn clear_provider_api_key(app: &AppHandle, provider: &str) -> Result<(), Cre
     if credentials.hostinger_api_key.is_none()
         && credentials.digitalocean_api_key.is_none()
         && credentials.hostinger_virtual_machine_id.is_none()
+        && credentials.github_pat.is_none()
+        && credentials.ssh_private_key.is_none()
     {
         return clear_stored_credentials(app);
     }
@@ -232,6 +240,123 @@ pub fn provider_credentials_status(
     }
 }
 
+pub fn load_github_pat(app: &AppHandle) -> Result<String, CredentialStoreError> {
+    let credentials = read_file(app)?;
+    let pat = credentials.github_pat.unwrap_or_default();
+    if pat.is_empty() {
+        return Err(CredentialStoreError::Read(
+            "GitHub PAT not configured".to_string(),
+        ));
+    }
+    Ok(pat)
+}
+
+pub fn save_github_pat(app: &AppHandle, pat: &str) -> Result<(), CredentialStoreError> {
+    if pat.trim().is_empty() {
+        return Err(CredentialStoreError::Write(
+            "GitHub PAT is required".to_string(),
+        ));
+    }
+    let mut credentials = read_file(app)?;
+    credentials.github_pat = Some(pat.trim().to_string());
+    write_file(app, &credentials)
+}
+
+pub fn clear_github_pat(app: &AppHandle) -> Result<(), CredentialStoreError> {
+    let mut credentials = read_file(app)?;
+    credentials.github_pat = None;
+    if credentials.hostinger_api_key.is_none()
+        && credentials.digitalocean_api_key.is_none()
+        && credentials.hostinger_virtual_machine_id.is_none()
+        && credentials.ssh_private_key.is_none()
+    {
+        return clear_stored_credentials(app);
+    }
+    write_file(app, &credentials)
+}
+
+pub fn github_pat_configured(app: &AppHandle) -> Result<bool, CredentialStoreError> {
+    let credentials = read_file(app)?;
+    Ok(credentials
+        .github_pat
+        .as_ref()
+        .is_some_and(|value| !value.is_empty()))
+}
+
+pub fn load_ssh_credentials(app: &AppHandle) -> Result<(String, String), CredentialStoreError> {
+    let credentials = read_file(app)?;
+    let key = credentials.ssh_private_key.unwrap_or_default();
+    if key.is_empty() {
+        return Err(CredentialStoreError::Read(
+            "SSH private key not configured".to_string(),
+        ));
+    }
+    let username = credentials
+        .ssh_username
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "root".to_string());
+    Ok((key, username))
+}
+
+pub fn save_ssh_credentials(
+    app: &AppHandle,
+    private_key: &str,
+    username: &str,
+) -> Result<(), CredentialStoreError> {
+    if private_key.trim().is_empty() {
+        return Err(CredentialStoreError::Write(
+            "SSH private key is required".to_string(),
+        ));
+    }
+    let mut credentials = read_file(app)?;
+    credentials.ssh_private_key = Some(private_key.trim().to_string());
+    credentials.ssh_username = Some(
+        username
+            .trim()
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+            .collect::<String>()
+            .if_empty_then("root".to_string()),
+    );
+    write_file(app, &credentials)
+}
+
+pub fn clear_ssh_credentials(app: &AppHandle) -> Result<(), CredentialStoreError> {
+    let mut credentials = read_file(app)?;
+    credentials.ssh_private_key = None;
+    credentials.ssh_username = None;
+    if credentials.hostinger_api_key.is_none()
+        && credentials.digitalocean_api_key.is_none()
+        && credentials.hostinger_virtual_machine_id.is_none()
+        && credentials.github_pat.is_none()
+    {
+        return clear_stored_credentials(app);
+    }
+    write_file(app, &credentials)
+}
+
+pub fn ssh_configured(app: &AppHandle) -> Result<bool, CredentialStoreError> {
+    let credentials = read_file(app)?;
+    Ok(credentials
+        .ssh_private_key
+        .as_ref()
+        .is_some_and(|value| !value.is_empty()))
+}
+
+trait IfEmpty {
+    fn if_empty_then(self, fallback: String) -> String;
+}
+
+impl IfEmpty for String {
+    fn if_empty_then(self, fallback: String) -> String {
+        if self.is_empty() {
+            fallback
+        } else {
+            self
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::CredentialFile;
@@ -242,6 +367,9 @@ mod tests {
             hostinger_api_key: Some("secret".into()),
             digitalocean_api_key: None,
             hostinger_virtual_machine_id: Some(42),
+            github_pat: None,
+            ssh_private_key: None,
+            ssh_username: None,
         };
 
         let json = serde_json::to_string(&file).expect("serialize");

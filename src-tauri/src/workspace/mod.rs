@@ -75,6 +75,7 @@ mod tests {
                 label: "Production".to_string(),
                 provider: "hostinger".to_string(),
                 virtual_machine_id: 42,
+                ssh_host: None,
             }],
             active_connection_profile_id: Some("profile-1".to_string()),
             deploy_projects: vec![DeployProjectConfig {
@@ -86,6 +87,7 @@ mod tests {
                     compose_file_path: "/srv/api/docker-compose.yaml".to_string(),
                 },
                 environment_profile: Some("NODE_ENV=production".to_string()),
+                github_link: None,
             }],
         };
 

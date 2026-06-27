@@ -27,6 +27,8 @@ pub struct ConnectionProfile {
     pub label: String,
     pub provider: String,
     pub virtual_machine_id: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh_host: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -46,6 +48,17 @@ pub struct DeployProjectConfig {
     pub deploy_source: DeploySource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment_profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_link: Option<GitHubLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubLink {
+    pub owner: String,
+    pub repo: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_branch: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
