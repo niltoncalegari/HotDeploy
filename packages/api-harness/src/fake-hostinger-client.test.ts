@@ -59,15 +59,22 @@ describe("FakeHostingerClient", () => {
     });
   });
 
-  it("returns project content and containers", async () => {
+  it("returns project content, containers, and VPS metrics", async () => {
     const client = new FakeHostingerClient();
 
     const content = await client.getProject(1001, "api-gateway");
     const containers = await client.getProjectContainers(1001, "api-gateway");
     const logs = await client.getProjectLogs(1001, "api-gateway");
+    const metrics = await client.getVpsMetrics(
+      1001,
+      "2026-06-24T11:00:00.000Z",
+      "2026-06-24T12:00:00.000Z",
+    );
 
     expect(content.content).toContain("api-gateway");
     expect(containers.length).toBeGreaterThan(0);
+    expect(containers[0]?.stats?.cpuPercentage).toBe(8.5);
     expect(logs[0]?.service).toBe("web");
+    expect(metrics.cpuUsage?.points.length).toBeGreaterThan(0);
   });
 });

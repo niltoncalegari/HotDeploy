@@ -7,6 +7,7 @@ import {
   logEntryListSchema,
   projectContentSchema,
   virtualMachineListSchema,
+  vpsMetricsSchema,
   type ActionResult,
   type ConnectionTestResult,
   type Container,
@@ -15,12 +16,14 @@ import {
   type LogEntry,
   type ProjectContent,
   type VirtualMachine,
+  type VpsMetrics,
 } from "./schemas/hostinger";
 import {
   sampleDeployResponse,
   sampleProjects,
   sampleVirtualMachines,
 } from "./fixtures/projects";
+import { sampleVpsMetrics } from "./fixtures/metrics";
 
 export type HostingerCall =
   | { method: "listVirtualMachines" }
@@ -52,6 +55,12 @@ export type HostingerCall =
       virtualMachineId: number;
       projectName: string;
       action: "start" | "stop" | "restart" | "update";
+    }
+  | {
+      method: "getVpsMetrics";
+      virtualMachineId: number;
+      dateFrom: string;
+      dateTo: string;
     };
 
 export class FakeHostingerClient {
@@ -61,6 +70,7 @@ export class FakeHostingerClient {
     private readonly virtualMachines: VirtualMachine[] = sampleVirtualMachines,
     private readonly projects: DockerProject[] = sampleProjects,
     private readonly deployResponse: DeployProjectResponse = sampleDeployResponse,
+    private readonly vpsMetrics: VpsMetrics = sampleVpsMetrics,
   ) {}
 
   async listVirtualMachines(): Promise<VirtualMachine[]> {
@@ -154,5 +164,19 @@ export class FakeHostingerClient {
         message: `[fake] logs for ${projectName}`,
       },
     ]);
+  }
+
+  async getVpsMetrics(
+    virtualMachineId: number,
+    dateFrom: string,
+    dateTo: string,
+  ): Promise<VpsMetrics> {
+    this.callLog.push({
+      method: "getVpsMetrics",
+      virtualMachineId,
+      dateFrom,
+      dateTo,
+    });
+    return vpsMetricsSchema.parse(this.vpsMetrics);
   }
 }

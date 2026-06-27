@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { VpsMetricsCard } from "@/features/projects/VpsMetricsCard";
 import {
   deployProject,
   getCredentialsStatus,
@@ -81,6 +82,7 @@ export function ProjectsPage() {
     queryFn: () => listProjects(activeProfile!.virtualMachineId, provider),
     enabled: Boolean(activeProfile && credentials?.configured),
     retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const hasActiveTarget = Boolean(activeProfile);
@@ -189,6 +191,11 @@ export function ProjectsPage() {
                 Refresh
               </Button>
             </div>
+
+            <VpsMetricsCard
+              virtualMachineId={activeProfile!.virtualMachineId}
+              provider={provider}
+            />
 
             {isLoading ? (
               <p className="text-muted-foreground text-sm">Loading projects…</p>

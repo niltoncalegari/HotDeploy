@@ -5,7 +5,7 @@ description: Hostinger VPS Docker Manager API reference for HotDeploy. Use when 
 
 # Hostinger API — HotDeploy Reference
 
-**Base URL:** `https://api.hostinger.com`  
+**Base URL:** `https://developers.hostinger.com`  
 **Auth:** `Authorization: Bearer <api_key>`  
 **Stability:** experimental (per Hostinger docs)
 
@@ -15,6 +15,7 @@ description: Hostinger VPS Docker Manager API reference for HotDeploy. Use when 
 |---|---|---|
 | List VMs | GET | `/api/vps/v1/virtual-machines` |
 | Get VM | GET | `/api/vps/v1/virtual-machines/{vmId}` |
+| VPS metrics | GET | `/api/vps/v1/virtual-machines/{vmId}/metrics` |
 
 ## Docker Manager endpoints
 

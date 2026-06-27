@@ -16,6 +16,12 @@ export const sampleProjects: DockerProject[] = [
         image: "ghcr.io/example/api:latest",
         health: "healthy",
         ports: ["443:443"],
+        stats: {
+          cpuPercentage: 8.5,
+          memoryPercentage: 12.3,
+          memoryUsed: 134_217_728,
+          memoryTotal: 1_073_741_824,
+        },
       },
     ],
   },

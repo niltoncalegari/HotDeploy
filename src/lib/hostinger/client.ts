@@ -25,12 +25,22 @@ export interface ConnectionTestResult {
   projectCount: number;
 }
 
+export interface ContainerStats {
+  cpuPercentage?: number;
+  memoryPercentage?: number;
+  memoryUsed?: number;
+  memoryTotal?: number;
+  netIn?: number;
+  netOut?: number;
+}
+
 export interface Container {
   name: string;
   image: string;
   health: string;
   ports: string[];
   state?: string;
+  stats?: ContainerStats;
 }
 
 export interface DockerProject {
@@ -55,6 +65,25 @@ export interface LogEntry {
   service: string;
   timestamp: string;
   message: string;
+}
+
+export interface MetricPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface MetricSeries {
+  unit: string;
+  points: MetricPoint[];
+}
+
+export interface VpsMetrics {
+  cpuUsage?: MetricSeries;
+  ramUsage?: MetricSeries;
+  diskSpace?: MetricSeries;
+  incomingTraffic?: MetricSeries;
+  outgoingTraffic?: MetricSeries;
+  uptime?: MetricSeries;
 }
 
 export interface DeploymentRecord {
@@ -168,6 +197,20 @@ export async function getProjectContainers(
   });
 }
 
+export async function getVpsMetrics(
+  virtualMachineId: number,
+  dateFrom: string,
+  dateTo: string,
+  provider: ProviderId = "hostinger",
+): Promise<VpsMetrics> {
+  return invoke<VpsMetrics>("get_vps_metrics", {
+    virtualMachineId,
+    dateFrom,
+    dateTo,
+    provider,
+  });
+}
+
 export async function deployProject(
   deployProjectId: string,
 ): Promise<ActionResult> {
@@ -242,14 +285,31 @@ export async function clearDeploymentHistory(): Promise<void> {
   return invoke("clear_deployment_history_command");
 }
 
+function parseStructuredErrorMessage(raw: string): string | null {
+  try {
+    const payload = JSON.parse(raw) as HostingerErrorPayload;
+    return typeof payload.message === "string" ? payload.message : null;
+  } catch {
+    return null;
+  }
+}
+
 export function parseHostingerError(error: unknown): string {
+  if (error instanceof Error) {
+    const structured = parseStructuredErrorMessage(error.message);
+    return structured ?? error.message;
+  }
+
   if (typeof error === "string") {
-    try {
-      const payload = JSON.parse(error) as HostingerErrorPayload;
-      return payload.message;
-    } catch {
-      return error;
+    return parseStructuredErrorMessage(error) ?? error;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message: unknown }).message;
+    if (typeof message === "string") {
+      return parseHostingerError(message);
     }
   }
+
   return "Unexpected error";
 }

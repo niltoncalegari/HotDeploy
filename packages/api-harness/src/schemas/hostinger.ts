@@ -7,12 +7,22 @@ export const containerHealthSchema = z.enum([
   "none",
 ]);
 
+export const containerStatsSchema = z.object({
+  cpuPercentage: z.number().optional(),
+  memoryPercentage: z.number().optional(),
+  memoryUsed: z.number().optional(),
+  memoryTotal: z.number().optional(),
+  netIn: z.number().optional(),
+  netOut: z.number().optional(),
+});
+
 export const containerSchema = z.object({
   name: z.string(),
   image: z.string(),
   health: z.string(),
   ports: z.array(z.string()),
   state: z.string().optional(),
+  stats: containerStatsSchema.optional(),
 });
 
 export const dockerProjectSchema = z.object({
@@ -71,12 +81,34 @@ export const logEntrySchema = z.object({
 
 export const logEntryListSchema = z.array(logEntrySchema);
 
+export const metricPointSchema = z.object({
+  timestamp: z.string(),
+  value: z.number(),
+});
+
+export const metricSeriesSchema = z.object({
+  unit: z.string(),
+  points: z.array(metricPointSchema),
+});
+
+export const vpsMetricsSchema = z.object({
+  cpuUsage: metricSeriesSchema.optional(),
+  ramUsage: metricSeriesSchema.optional(),
+  diskSpace: metricSeriesSchema.optional(),
+  incomingTraffic: metricSeriesSchema.optional(),
+  outgoingTraffic: metricSeriesSchema.optional(),
+  uptime: metricSeriesSchema.optional(),
+});
+
+export type ContainerStats = z.infer<typeof containerStatsSchema>;
 export type Container = z.infer<typeof containerSchema>;
 export type DockerProject = z.infer<typeof dockerProjectSchema>;
-export type DeployProjectRequest = z.infer<typeof deployProjectRequestSchema>;
 export type DeployProjectResponse = z.infer<typeof deployProjectResponseSchema>;
 export type ActionResult = z.infer<typeof actionResultSchema>;
 export type VirtualMachine = z.infer<typeof virtualMachineSchema>;
 export type ConnectionTestResult = z.infer<typeof connectionTestResultSchema>;
 export type ProjectContent = z.infer<typeof projectContentSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
+export type MetricPoint = z.infer<typeof metricPointSchema>;
+export type MetricSeries = z.infer<typeof metricSeriesSchema>;
+export type VpsMetrics = z.infer<typeof vpsMetricsSchema>;
