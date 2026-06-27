@@ -42,7 +42,7 @@ A **slice** is a thin vertical deliverable that ships in **one PR** and is demoa
 ## 3. Slice lifecycle
 
 ```
-idea → spec → issue → branch → RED test → GREEN code → refactor → quality → PR → merge
+idea → spec → issue → branch → RED test → GREEN code → refactor → version bump → quality → PR → merge
 ```
 
 ---
@@ -99,6 +99,7 @@ Summary:
 - Link spec: `Spec: specs/features/001-vps-connection.spec.md`
 - `Closes #N` when an issue exists
 - Run `pnpm quality` before push
+- Bump version: `pnpm version:bump patch` per slice PR; `pnpm version:bump phase N` when a new phase ships (see [docs/RUNBOOK.md](docs/RUNBOOK.md#versioning))
 
 ### PR size
 
@@ -127,8 +128,9 @@ Mandatory before every PR. See [docs/QUALITY.md](docs/QUALITY.md). Never edit `b
 2. Read the feature spec.
 3. Write failing test (RED).
 4. Implement (GREEN).
-5. `pnpm quality`
-6. Open PR per `docs/PR-WORKFLOW.md`
-7. Update `PLAN.md` slice status if phase changed.
+5. Bump version (`pnpm version:bump patch` or `phase N`).
+6. `pnpm quality`
+7. Open PR per `docs/PR-WORKFLOW.md`
+8. Update `PLAN.md` slice status if phase changed.
 
 Skills: `.agents/skills/tdd-workflow`, `hostinger-api`, `pr-automation`.

@@ -20,6 +20,9 @@ else
   echo "WARN: cargo not found — skipping Rust checks (install Rust for full gate)"
 fi
 
+echo "==> Version sync"
+node scripts/sync-version.mjs
+
 echo "==> Quality ratchet"
 node scripts/compare-baseline.mjs
 

@@ -115,6 +115,34 @@ Production CSP allows:
 
 Tighten further before store distribution if the app does not load remote assets.
 
+## Versioning
+
+HotDeploy uses **semver** before 1.0. The **minor** version tracks the shipped roadmap **Phase**; **patch** increments per slice or fix within that phase.
+
+| Phase shipped | App version |
+|---|---|
+| 0 — Foundation | `0.0.x` |
+| 1 — Connection | `0.1.x` |
+| … | … |
+| 8 — GitHub Advanced | `0.8.x` |
+
+**Canonical file:** `package.json` → `"version"`.
+
+```bash
+# Bump patch after a slice PR (same phase)
+pnpm version:bump patch
+
+# Bump when a new phase ships
+pnpm version:bump phase 9
+
+# Sync to Rust / Tauri / api-harness (also runs after bump)
+pnpm version:sync
+```
+
+Synced targets: `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `packages/api-harness/package.json`.
+
+React UI imports `APP_VERSION` from `src/lib/app-version.ts` (do not hard-code version strings in components).
+
 ## Troubleshooting
 
 | Problem | Fix |
