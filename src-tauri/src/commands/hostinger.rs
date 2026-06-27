@@ -8,7 +8,7 @@ use crate::deployment::{
 use crate::hostinger::error::HostingerError;
 use crate::hostinger::types::{
     ActionResult, ConnectionTestResult, Container, DeployProjectRequest, DockerProject, LogEntry,
-    ProjectContent, VirtualMachine,
+    ProjectContent, VirtualMachine, VpsMetrics,
 };
 use crate::provider::digitalocean::DigitalOceanProvider;
 use crate::provider::error::ProviderError;
@@ -53,9 +53,12 @@ fn record_action(
 }
 
 #[tauri::command]
-pub async fn list_vms(provider: Option<String>) -> Result<Vec<VirtualMachine>, String> {
+pub async fn list_vms(
+    app: AppHandle,
+    provider: Option<String>,
+) -> Result<Vec<VirtualMachine>, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     provider.list_vms().await.map_err(String::from)
 }
 
@@ -71,11 +74,12 @@ pub async fn preview_list_vms(
 
 #[tauri::command]
 pub async fn test_connection(
+    app: AppHandle,
     virtual_machine_id: u64,
     provider: Option<String>,
 ) -> Result<ConnectionTestResult, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     provider
         .test_connection(virtual_machine_id)
         .await
@@ -84,11 +88,12 @@ pub async fn test_connection(
 
 #[tauri::command]
 pub async fn list_projects(
+    app: AppHandle,
     virtual_machine_id: u64,
     provider: Option<String>,
 ) -> Result<Vec<DockerProject>, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     provider
         .list_projects(virtual_machine_id)
         .await
@@ -97,12 +102,13 @@ pub async fn list_projects(
 
 #[tauri::command]
 pub async fn get_project(
+    app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
     provider: Option<String>,
 ) -> Result<ProjectContent, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     provider
         .get_project(virtual_machine_id, &project_name)
         .await
@@ -111,14 +117,31 @@ pub async fn get_project(
 
 #[tauri::command]
 pub async fn get_project_containers(
+    app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
     provider: Option<String>,
 ) -> Result<Vec<Container>, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     provider
         .get_project_containers(virtual_machine_id, &project_name)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn get_vps_metrics(
+    app: AppHandle,
+    virtual_machine_id: u64,
+    date_from: String,
+    date_to: String,
+    provider: Option<String>,
+) -> Result<VpsMetrics, String> {
+    let provider_id = resolve_provider_id(provider);
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
+    provider
+        .get_vps_metrics(virtual_machine_id, &date_from, &date_to)
         .await
         .map_err(String::from)
 }
@@ -132,7 +155,7 @@ pub async fn deploy_project(
     let deploy_config = find_deploy_project(&workspace, &deploy_project_id)?;
     let profile = find_connection_profile(&workspace, &deploy_config.connection_profile_id)?;
 
-    let provider = build_provider(&profile.provider).map_err(String::from)?;
+    let provider = build_provider(&app, &profile.provider).map_err(String::from)?;
     if !provider.supports_docker_compose() {
         return Err(String::from(ProviderError::unsupported(
             &profile.provider,
@@ -171,7 +194,7 @@ pub async fn start_project(
     provider: Option<String>,
 ) -> Result<ActionResult, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     let result = provider
         .start_project(virtual_machine_id, &project_name)
         .await;
@@ -187,7 +210,7 @@ pub async fn stop_project(
     provider: Option<String>,
 ) -> Result<ActionResult, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     let result = provider
         .stop_project(virtual_machine_id, &project_name)
         .await;
@@ -203,7 +226,7 @@ pub async fn restart_project(
     provider: Option<String>,
 ) -> Result<ActionResult, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     let result = provider
         .restart_project(virtual_machine_id, &project_name)
         .await;
@@ -219,7 +242,7 @@ pub async fn update_project(
     provider: Option<String>,
 ) -> Result<ActionResult, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     let result = provider
         .update_project(virtual_machine_id, &project_name)
         .await;
@@ -229,12 +252,13 @@ pub async fn update_project(
 
 #[tauri::command]
 pub async fn get_project_logs(
+    app: AppHandle,
     virtual_machine_id: u64,
     project_name: String,
     provider: Option<String>,
 ) -> Result<Vec<LogEntry>, String> {
     let provider_id = resolve_provider_id(provider);
-    let provider = build_provider(&provider_id).map_err(String::from)?;
+    let provider = build_provider(&app, &provider_id).map_err(String::from)?;
     provider
         .get_project_logs(virtual_machine_id, &project_name)
         .await

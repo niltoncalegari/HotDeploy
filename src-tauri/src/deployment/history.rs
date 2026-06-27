@@ -32,7 +32,7 @@ fn history_path(app: &tauri::AppHandle) -> Result<PathBuf, HostingerError> {
     let dir = app
         .path()
         .app_config_dir()
-        .map_err(|error| HostingerError::Keychain(error.to_string()))?;
+        .map_err(|error| HostingerError::CredentialStore(error.to_string()))?;
     Ok(dir.join(HISTORY_FILE))
 }
 
@@ -45,7 +45,7 @@ pub fn load_deployment_history(
     }
 
     let raw = fs::read_to_string(path).map_err(|error| {
-        HostingerError::Keychain(format!("failed to read deployment history: {error}"))
+        HostingerError::CredentialStore(format!("failed to read deployment history: {error}"))
     })?;
 
     let file: DeploymentHistoryFile = serde_json::from_str(&raw)?;
@@ -62,7 +62,7 @@ pub fn append_deployment_record(
     let path = history_path(app)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
-            HostingerError::Keychain(format!("failed to create history directory: {error}"))
+            HostingerError::CredentialStore(format!("failed to create history directory: {error}"))
         })?;
     }
 
@@ -88,7 +88,7 @@ pub fn append_deployment_record(
     let file = DeploymentHistoryFile { entries };
     let serialized = serde_json::to_string_pretty(&file)?;
     fs::write(path, serialized).map_err(|error| {
-        HostingerError::Keychain(format!("failed to write deployment history: {error}"))
+        HostingerError::CredentialStore(format!("failed to write deployment history: {error}"))
     })?;
 
     Ok(())
@@ -98,7 +98,7 @@ pub fn clear_deployment_history(app: &tauri::AppHandle) -> Result<(), HostingerE
     let path = history_path(app)?;
     if path.exists() {
         fs::remove_file(path).map_err(|error| {
-            HostingerError::Keychain(format!("failed to clear deployment history: {error}"))
+            HostingerError::CredentialStore(format!("failed to clear deployment history: {error}"))
         })?;
     }
     Ok(())

@@ -1,6 +1,8 @@
 use serde::Deserialize;
 
-use crate::commands::credentials::load_api_key_for_provider;
+use tauri::AppHandle;
+
+use crate::credentials::load_api_key_for_provider;
 use crate::hostinger::error::HostingerError;
 use crate::hostinger::types::{
     ActionResult, ConnectionTestResult, Container, DeployProjectRequest, DockerProject, LogEntry,
@@ -30,8 +32,8 @@ struct ApiDroplet {
 }
 
 impl DigitalOceanProvider {
-    pub fn from_keychain() -> Result<Self, ProviderError> {
-        let api_key = load_api_key_for_provider("digitalocean")?;
+    pub fn from_app(app: &AppHandle) -> Result<Self, ProviderError> {
+        let api_key = load_api_key_for_provider(app, "digitalocean")?;
         Ok(Self::from_api_key(api_key))
     }
 

@@ -1,8 +1,10 @@
-use crate::commands::credentials::load_api_key;
+use tauri::AppHandle;
+
+use crate::credentials::load_api_key_for_provider;
 use crate::hostinger::client::HostingerClient;
 use crate::hostinger::types::{
     ActionResult, ConnectionTestResult, Container, DeployProjectRequest, DockerProject, LogEntry,
-    ProjectContent, VirtualMachine,
+    ProjectContent, VirtualMachine, VpsMetrics,
 };
 
 use super::error::ProviderError;
@@ -13,8 +15,8 @@ pub struct HostingerProvider {
 }
 
 impl HostingerProvider {
-    pub fn from_keychain() -> Result<Self, ProviderError> {
-        let api_key = load_api_key().map_err(ProviderError::from)?;
+    pub fn from_app(app: &AppHandle) -> Result<Self, ProviderError> {
+        let api_key = load_api_key_for_provider(app, "hostinger")?;
         Ok(Self {
             client: HostingerClient::new(api_key),
         })
@@ -148,6 +150,18 @@ impl VpsProvider for HostingerProvider {
     ) -> Result<Vec<LogEntry>, ProviderError> {
         self.client
             .get_project_logs(virtual_machine_id, project_name)
+            .await
+            .map_err(ProviderError::from)
+    }
+
+    async fn get_vps_metrics(
+        &self,
+        virtual_machine_id: u64,
+        date_from: &str,
+        date_to: &str,
+    ) -> Result<VpsMetrics, ProviderError> {
+        self.client
+            .get_vps_metrics(virtual_machine_id, date_from, date_to)
             .await
             .map_err(ProviderError::from)
     }

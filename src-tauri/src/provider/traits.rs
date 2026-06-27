@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::hostinger::types::{
     ActionResult, ConnectionTestResult, Container, DeployProjectRequest, DockerProject, LogEntry,
-    ProjectContent, VirtualMachine,
+    ProjectContent, VirtualMachine, VpsMetrics,
 };
 
 use super::error::ProviderError;
@@ -72,6 +72,19 @@ pub trait VpsProvider: Send + Sync {
         virtual_machine_id: u64,
         project_name: &str,
     ) -> Result<Vec<LogEntry>, ProviderError>;
+
+    async fn get_vps_metrics(
+        &self,
+        virtual_machine_id: u64,
+        date_from: &str,
+        date_to: &str,
+    ) -> Result<VpsMetrics, ProviderError> {
+        let _ = (virtual_machine_id, date_from, date_to);
+        Err(ProviderError::unsupported(
+            self.provider_id(),
+            "VPS metrics",
+        ))
+    }
 }
 
 #[derive(Debug, Serialize)]

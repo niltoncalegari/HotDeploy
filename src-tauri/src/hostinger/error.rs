@@ -11,8 +11,8 @@ pub enum HostingerError {
     Http(#[from] reqwest::Error),
     #[error("api error ({status}): {message}")]
     Api { status: u16, message: String },
-    #[error("keychain error: {0}")]
-    Keychain(String),
+    #[error("credential store error: {0}")]
+    CredentialStore(String),
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 }
@@ -31,7 +31,7 @@ impl HostingerError {
             Self::NotImplemented(_) => "NOT_IMPLEMENTED",
             Self::Http(_) => "HTTP_ERROR",
             Self::Api { .. } => "API_ERROR",
-            Self::Keychain(_) => "KEYCHAIN_ERROR",
+            Self::CredentialStore(_) => "CREDENTIAL_STORE_ERROR",
             Self::Serialization(_) => "SERIALIZATION_ERROR",
         }
     }

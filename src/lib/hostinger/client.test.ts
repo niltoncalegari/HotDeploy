@@ -11,6 +11,7 @@ import {
   getProject,
   getProjectContainers,
   getProjectLogs,
+  getVpsMetrics,
   listProjects,
   listSupportedProviders,
   listVirtualMachines,
@@ -118,6 +119,17 @@ describe("hostinger client", () => {
       { service: "web", timestamp: "1", message: "ok" },
     ]);
     await getProjectLogs(1, "api");
+
+    mockedInvoke.mockResolvedValueOnce({
+      cpuUsage: { unit: "%", points: [{ timestamp: "1", value: 2 }] },
+    });
+    await getVpsMetrics(1, "2026-06-24T11:00:00.000Z", "2026-06-24T12:00:00.000Z");
+    expect(mockedInvoke).toHaveBeenCalledWith("get_vps_metrics", {
+      virtualMachineId: 1,
+      dateFrom: "2026-06-24T11:00:00.000Z",
+      dateTo: "2026-06-24T12:00:00.000Z",
+      provider: "hostinger",
+    });
   });
 
   it("invokes deploy and lifecycle commands", async () => {
@@ -152,6 +164,19 @@ describe("hostinger client", () => {
       "bad key",
     );
     expect(parseHostingerError("plain error")).toBe("plain error");
+    expect(parseHostingerError(new Error("API token is required."))).toBe(
+      "API token is required.",
+    );
+    expect(
+      parseHostingerError(
+        new Error(
+          '{"code":"CREDENTIAL_STORE_ERROR","message":"credential store error: denied"}',
+        ),
+      ),
+    ).toBe("credential store error: denied");
+    expect(parseHostingerError({ message: "wrapped error" })).toBe(
+      "wrapped error",
+    );
     expect(parseHostingerError({})).toBe("Unexpected error");
   });
 });

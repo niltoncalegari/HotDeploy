@@ -1,11 +1,11 @@
 use super::error::HostingerError;
 use super::types::{
-    ActionResult, ApiActionResult, ApiDockerProject, ApiProjectContent, ApiServiceLogs,
-    ApiVirtualMachine, ConnectionTestResult, Container, DeployProjectRequest, DockerProject,
-    LogEntry, ProjectContent, VirtualMachine,
+    ActionResult, ApiActionResult, ApiDockerProject, ApiMetricsCollection, ApiProjectContent,
+    ApiServiceLogs, ApiVirtualMachine, ConnectionTestResult, Container, DeployProjectRequest,
+    DockerProject, LogEntry, ProjectContent, VirtualMachine, VpsMetrics,
 };
 
-pub const HOSTINGER_API_BASE: &str = "https://api.hostinger.com";
+pub const HOSTINGER_API_BASE: &str = "https://developers.hostinger.com";
 
 pub struct HostingerClient {
     http: reqwest::Client,
@@ -71,6 +71,36 @@ impl HostingerClient {
         let response = self.get(&path).await?;
         let api_containers: Vec<super::types::ApiContainer> = response.json().await?;
         Ok(api_containers.into_iter().map(Into::into).collect())
+    }
+
+    pub async fn get_vps_metrics(
+        &self,
+        virtual_machine_id: u64,
+        date_from: &str,
+        date_to: &str,
+    ) -> Result<VpsMetrics, HostingerError> {
+        let path = format!("/api/vps/v1/virtual-machines/{virtual_machine_id}/metrics");
+        let url = format!("{HOSTINGER_API_BASE}{path}");
+        let response = self
+            .http
+            .get(url)
+            .bearer_auth(&self.api_key)
+            .header("Accept", "application/json")
+            .query(&[("date_from", date_from), ("date_to", date_to)])
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status().as_u16();
+            let message = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "unknown error".into());
+            return Err(HostingerError::Api { status, message });
+        }
+
+        let api_metrics: ApiMetricsCollection = response.json().await?;
+        Ok(api_metrics.into())
     }
 
     pub async fn deploy_project(
@@ -227,5 +257,15 @@ impl HostingerClient {
             .await
             .unwrap_or_else(|_| "unknown error".into());
         Err(HostingerError::Api { status, message })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HOSTINGER_API_BASE;
+
+    #[test]
+    fn api_base_matches_official_hostinger_sdk() {
+        assert_eq!(HOSTINGER_API_BASE, "https://developers.hostinger.com");
     }
 }

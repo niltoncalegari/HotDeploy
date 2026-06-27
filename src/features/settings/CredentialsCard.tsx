@@ -87,14 +87,20 @@ export function CredentialsCard() {
       setConnectionMessage(null);
 
       if (workspace && resolvedVmId) {
-        const label = findProfileLabelForVm(resolvedVmId, virtualMachines);
-        const nextWorkspace = syncConnectionProfileFromVm(
-          workspace,
-          resolvedVmId,
-          label,
-        );
-        await saveWorkspace(nextWorkspace);
-        queryClient.setQueryData(["workspace"], nextWorkspace);
+        try {
+          const label = findProfileLabelForVm(resolvedVmId, virtualMachines);
+          const nextWorkspace = syncConnectionProfileFromVm(
+            workspace,
+            resolvedVmId,
+            label,
+          );
+          await saveWorkspace(nextWorkspace);
+          queryClient.setQueryData(["workspace"], nextWorkspace);
+        } catch (error) {
+          toast.warning(
+            `Credentials saved, but connection profile sync failed: ${parseHostingerError(error)}`,
+          );
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ["credentials-status"] });
@@ -175,8 +181,8 @@ export function CredentialsCard() {
           API credentials
         </CardTitle>
         <CardDescription>
-          Stored securely in your operating system keychain. Saving also syncs
-          the active connection profile VM ID.
+          Stored locally in the app config folder (not the macOS Keychain).
+          Saving also syncs the active connection profile VM ID.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

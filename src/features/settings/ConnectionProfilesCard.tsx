@@ -101,8 +101,8 @@ export function ConnectionProfilesCard({
           Connection profiles
         </CardTitle>
         <CardDescription>
-          Pair a VPS target from a provider with a label. API keys stay in the
-          OS keychain.
+          Pair a VPS target from a provider with a label. API keys stay in a
+          local credentials file managed by the desktop app.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
