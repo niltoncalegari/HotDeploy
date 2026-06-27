@@ -9,22 +9,30 @@ flowchart LR
     subgraph frontend [src React]
         Pages[features pages]
         UI[shadcn components]
-        SDK[lib/hostinger client]
+        SDK[lib clients]
     end
     subgraph backend [src-tauri Rust]
         Commands[Tauri commands]
-        Vault[keyring Credential Vault]
-        Client[hostinger client.rs]
+        Vault[Credential Vault]
+        Hostinger[hostinger client]
+        GitHub[github client]
+        SSH[ssh client]
     end
     subgraph external [External]
-        API[Hostinger VPS Docker API]
+        HAPI[Hostinger VPS Docker API]
+        GAPI[GitHub REST API]
+        VPS[VPS SSH]
     end
     Pages --> UI
     Pages --> SDK
     SDK -->|invoke| Commands
     Commands --> Vault
-    Commands --> Client
-    Client --> API
+    Commands --> Hostinger
+    Commands --> GitHub
+    Commands --> SSH
+    Hostinger --> HAPI
+    GitHub --> GAPI
+    SSH --> VPS
 ```
 
 ## Layer responsibilities
@@ -44,6 +52,8 @@ flowchart LR
 | `hostinger/client.rs` | HTTP client with Bearer auth |
 | `hostinger/types.rs` | Serde types shared with commands |
 | `hostinger/error.rs` | Structured errors → JSON for frontend |
+| `github/client.rs` | GitHub REST (repos, secrets, Actions) |
+| `ssh/client.rs` | Whitelisted SSH sessions (runner install) |
 
 ### api-harness (`packages/api-harness/`)
 

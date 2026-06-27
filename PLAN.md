@@ -19,6 +19,13 @@ Ship a dependable desktop control panel for Docker Compose deployments, starting
 | 5 — Polish | `5.A` | Multi-VPS | Switch default VPS, remember last used |
 | 5 — Polish | `5.B` | History | Local deployment history (non-secret) |
 | 6 — Providers | `6.A` | Adapter layer | `VpsProvider` trait + second provider |
+| 7 — GitHub CI/CD | `7.A` | GitHub PAT | Connect GitHub, test connection |
+| 7 — GitHub CI/CD | `7.B` | Repo linking | Link repos to Docker Projects |
+| 7 — GitHub CI/CD | `7.C` | SSH access | SSH credentials + connectivity test |
+| 7 — GitHub CI/CD | `7.D` | Secrets/variables | Manage GitHub Actions secrets |
+| 7 — GitHub CI/CD | `7.E` | Workflow generator | Auto-create CI/CD YAML |
+| 7 — GitHub CI/CD | `7.F` | Self-hosted runner | One-click runner on VPS |
+| 7 — GitHub CI/CD | `7.G` | UX polish | Skeletons, empty states, confirmations |
 
 ## Provider strategy
 
@@ -43,4 +50,19 @@ Branch pattern: `feat/slice-1a-hostinger-connection`
 
 ## Current status
 
-**Phases 0–5 — shipped.** Specs 000–010 complete. Phase 6.A (provider adapter) in progress via spec 011.
+**Phases 0–6.A — shipped.** Specs 000–011 complete. **Phase 7 — shipped** via specs 015–021.
+
+## Phase 8 punch list
+
+Candidates for the next planning cycle (not specced):
+
+| ID | Idea | Notes |
+|---|---|---|
+| 8.A | GitHub App (device flow) | Replace PAT for org-wide installs |
+| 8.B | Runner uninstall + token rotate | Complement spec 020 |
+| 8.C | Push-to-deploy webhooks | Requires hosted endpoint or polling |
+| 8.D | Branch/tag deploy pinning | Blocked on Hostinger API |
+| 8.E | Onboarding wizard | First-run guided setup |
+| 8.F | shadcn Select migration | Replace native `<select>` |
+| 8.G | Environment Profile ↔ GitHub secrets sync | One-way import |
+| 8.H | GitHub Environments support | staging/production gates |

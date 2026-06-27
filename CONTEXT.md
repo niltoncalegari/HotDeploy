@@ -17,8 +17,24 @@ The cloud host that exposes VPS and Docker management APIs. v1 provider: Hosting
 _Avoid_: platform backend, server vendor (when meaning API integration)
 
 **VPS**:
-A virtual machine reachable through a Provider API. HotDeploy never SSHes directly in v1.
+A virtual machine reachable through a Provider API. Phase 7+ may also use optional SSH for whitelisted ops (runner install).
 _Avoid_: server, droplet (unless quoting provider docs)
+
+**GitHub Connection**:
+A GitHub Personal Access Token stored in Credential Vault, enabling repo listing and Actions API calls.
+_Avoid_: OAuth session, GitHub login
+
+**Repository Link**:
+Association between a Deploy Project / Docker Project and a GitHub `owner/repo`.
+_Avoid_: git remote, submodule
+
+**CI Workflow**:
+A generated GitHub Actions YAML committed to `.github/workflows/` for build/test/deploy.
+_Avoid_: pipeline file, Jenkinsfile
+
+**Self-Hosted Runner**:
+A GitHub Actions runner process on the VPS, installed via SSH whitelist commands.
+_Avoid_: build agent, CI server
 
 **Docker Project**:
 A named Docker Compose stack managed as a single unit on a VPS.
@@ -91,13 +107,15 @@ From a Docker Project detail view: run **Lifecycle Action** (start/stop/restart/
 
 ## Hostinger API boundaries
 
-HotDeploy calls Hostinger REST endpoints only. The VPS runs Docker; HotDeploy does not install Docker or manage OS packages.
+HotDeploy calls Hostinger REST endpoints for Docker operations. Phase 7+ uses SSH only for whitelisted runner management.
 
 | Concern | Owner |
 |---|---|
 | API authentication | HotDeploy desktop (Bearer token from Credential Vault) |
 | Compose orchestration | Hostinger VPS Docker Manager on the VPS |
 | Container runtime | Docker Engine on the VPS |
+| GitHub API | HotDeploy desktop (PAT from Credential Vault) |
+| Runner install | HotDeploy desktop via SSH (Phase 7+) |
 | DNS / TLS / reverse proxy | User infrastructure outside HotDeploy v1 |
 
 Representative endpoints (experimental API):
@@ -129,7 +147,7 @@ When adding a provider, update this file and add an ADR under `docs/adr/`.
 
 - Multi-user accounts or cloud sync
 - Hosted HotDeploy backend
-- Direct SSH / docker CLI on the VPS
+- Arbitrary SSH shell / docker CLI on the VPS (whitelist only in Phase 7+)
 - Non-Docker workloads
 - Production code signing / auto-update (documented in RUNBOOK; updater scaffolded, signing certs user-provided)
 
