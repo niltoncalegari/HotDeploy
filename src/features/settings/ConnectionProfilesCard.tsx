@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { saveWorkspace } from "@/lib/workspace/client";
 import {
   createConnectionProfile,
@@ -173,20 +180,23 @@ export function ConnectionProfilesCard({
           </div>
           <div className="space-y-2">
             <Label htmlFor="profile-provider">Provider</Label>
-            <select
-              id="profile-provider"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+            <Select
               value={provider}
-              onChange={(event) => {
-                const parsed = providerIdSchema.safeParse(event.target.value);
+              onValueChange={(value) => {
+                const parsed = providerIdSchema.safeParse(value);
                 if (parsed.success) {
                   setProvider(parsed.data);
                 }
               }}
             >
-              <option value="hostinger">Hostinger</option>
-              <option value="digitalocean">DigitalOcean</option>
-            </select>
+              <SelectTrigger id="profile-provider" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hostinger">Hostinger</SelectItem>
+                <SelectItem value="digitalocean">DigitalOcean</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button type="button" onClick={handleAdd} disabled={saveMutation.isPending}>
             <Plus className="size-4" />

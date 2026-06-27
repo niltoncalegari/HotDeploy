@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   commitWorkflowFile,
@@ -103,28 +110,30 @@ export function WorkflowGeneratorDialog({
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="wf-trigger">Trigger</Label>
-            <select
-              id="wf-trigger"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm"
-              value={trigger}
-              onChange={(event) => setTrigger(event.target.value)}
-            >
-              <option value="push">Push to main</option>
-              <option value="pull_request">Pull request</option>
-              <option value="manual">Manual (workflow_dispatch)</option>
-            </select>
+            <Select value={trigger} onValueChange={setTrigger}>
+              <SelectTrigger id="wf-trigger" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="push">Push to main</SelectItem>
+                <SelectItem value="pull_request">Pull request</SelectItem>
+                <SelectItem value="manual">Manual (workflow_dispatch)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="wf-runner">Runner</Label>
-            <select
-              id="wf-runner"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm"
-              value={runnerType}
-              onChange={(event) => setRunnerType(event.target.value)}
-            >
-              <option value="self-hosted">Self-hosted (VPS)</option>
-              <option value="github-hosted">GitHub-hosted + deploy-on-vps</option>
-            </select>
+            <Select value={runnerType} onValueChange={setRunnerType}>
+              <SelectTrigger id="wf-runner" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="self-hosted">Self-hosted (VPS)</SelectItem>
+                <SelectItem value="github-hosted">
+                  GitHub-hosted + deploy-on-vps
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

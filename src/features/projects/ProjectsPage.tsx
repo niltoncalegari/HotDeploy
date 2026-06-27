@@ -23,7 +23,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, EmptyStateButton } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VpsMetricsCard } from "@/features/projects/VpsMetricsCard";
 import { filterDeployProjectsForProfile, githubRepoLabel } from "@/lib/github/repo";
@@ -340,18 +348,18 @@ export function ProjectsPage() {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="deploy-project-picker">Deploy project</Label>
-            <select
-              id="deploy-project-picker"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-              value={pickerProjectId}
-              onChange={(event) => setPickerProjectId(event.target.value)}
-            >
-              {localProjects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name} → {project.dockerProjectName}
-                </option>
-              ))}
-            </select>
+            <Select value={pickerProjectId} onValueChange={setPickerProjectId}>
+              <SelectTrigger id="deploy-project-picker" className="w-full">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {localProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name} → {project.dockerProjectName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeployPickerOpen(false)}>
@@ -378,6 +386,17 @@ export function ProjectsPage() {
               {activeProfile?.virtualMachineId}?
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="branch-pinning">Branch pinning</Label>
+            <Input
+              id="branch-pinning"
+              disabled
+              placeholder="Coming when provider API supports branch/ref deploy"
+            />
+            <p className="text-muted-foreground text-xs">
+              Blocked on Hostinger Docker Manager API — see spec 029.
+            </p>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"

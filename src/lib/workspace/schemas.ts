@@ -41,6 +41,8 @@ export const deployProjectConfigSchema = z.object({
   deploySource: deploySourceSchema,
   environmentProfile: z.string().optional(),
   githubLink: githubLinkSchema.optional(),
+  autoDeployOnPush: z.boolean().optional(),
+  autoDeployLastRunId: z.number().int().positive().optional(),
 });
 
 export const workspaceConfigSchema = z.object({
@@ -49,6 +51,7 @@ export const workspaceConfigSchema = z.object({
   connectionProfiles: z.array(connectionProfileSchema),
   activeConnectionProfileId: z.string().optional(),
   deployProjects: z.array(deployProjectConfigSchema),
+  onboardingCompleted: z.boolean().optional(),
 });
 
 export type ProviderId = z.infer<typeof providerIdSchema>;

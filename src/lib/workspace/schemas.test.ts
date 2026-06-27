@@ -79,4 +79,25 @@ describe("workspaceConfigSchema", () => {
     expect(project.id).toBeTruthy();
     expect(project.dockerProjectName).toBe("worker");
   });
+
+  it("accepts phase 8 onboarding and auto-deploy fields", () => {
+    const parsed = workspaceConfigSchema.parse({
+      ...defaultWorkspaceConfig,
+      onboardingCompleted: true,
+      deployProjects: [
+        {
+          id: "p1",
+          name: "App",
+          connectionProfileId: "c1",
+          dockerProjectName: "app",
+          deploySource: { type: "github", repositoryUrl: "https://github.com/o/r" },
+          autoDeployOnPush: true,
+          autoDeployLastRunId: 42,
+        },
+      ],
+    });
+
+    expect(parsed.onboardingCompleted).toBe(true);
+    expect(parsed.deployProjects[0]?.autoDeployOnPush).toBe(true);
+  });
 });

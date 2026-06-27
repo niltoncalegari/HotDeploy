@@ -80,7 +80,7 @@ describe("CredentialsCard", () => {
       );
     });
 
-    expect(await screen.findByRole("option", { name: /srv1658621/i })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /vps from api/i })).toBeEnabled();
   });
 
   it("saves credentials and syncs workspace profile", async () => {
@@ -99,7 +99,7 @@ describe("CredentialsCard", () => {
     await waitFor(() => {
       expect(mockedPreviewListVirtualMachines).toHaveBeenCalled();
     });
-    fireEvent.change(screen.getByLabelText(/vps from api/i), {
+    fireEvent.change(screen.getByLabelText(/or vm id/i), {
       target: { value: "1658621" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save credentials/i }));

@@ -11,6 +11,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getProjectLogs, parseHostingerError } from "@/lib/hostinger/client";
 import type { ProviderId } from "@/lib/workspace/schemas";
 
@@ -59,19 +66,19 @@ export function LogsPanel({
           <label htmlFor="service-filter" className="text-muted-foreground text-sm">
             Service
           </label>
-          <select
-            id="service-filter"
-            className="border-input bg-background h-8 rounded-md border px-2 text-sm"
-            value={serviceFilter}
-            onChange={(event) => setServiceFilter(event.target.value)}
-          >
-            <option value="all">All services</option>
-            {services.map((service) => (
-              <option key={service} value={service}>
-                {service}
-              </option>
-            ))}
-          </select>
+          <Select value={serviceFilter} onValueChange={setServiceFilter}>
+            <SelectTrigger id="service-filter" size="sm" className="min-w-[8rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All services</SelectItem>
+              {services.map((service) => (
+                <SelectItem key={service} value={service}>
+                  {service}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (

@@ -15,6 +15,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   clearCredentials,
   getCredentialsStatus,
   listVirtualMachines,
@@ -214,34 +221,45 @@ export function CredentialsCard() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="vm-select">VPS from API</Label>
-            <select
-              id="vm-select"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-              value={selectValue}
-              onChange={(event) => {
-                const value = event.target.value
-                  ? Number(event.target.value)
-                  : null;
-                setSelectedVmId(value);
-                if (value) {
-                  setManualVmId(String(value));
+            <Select
+              value={selectValue ? String(selectValue) : "__none__"}
+              onValueChange={(value) => {
+                if (value === "__none__") {
+                  setSelectedVmId(null);
+                  return;
                 }
+                const parsed = Number(value);
+                setSelectedVmId(parsed);
+                setManualVmId(String(parsed));
               }}
               disabled={!canLoadVms || virtualMachines.length === 0}
             >
-              <option value="">
-                {vmsLoading || loadVmsMutation.isPending
-                  ? "Loading VPS list…"
-                  : virtualMachines.length === 0
-                    ? "Load VPS list first"
-                    : "Select VPS"}
-              </option>
-              {virtualMachines.map((vm) => (
-                <option key={vm.id} value={vm.id}>
-                  {vm.hostname} ({vm.state})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="vm-select" className="w-full">
+                <SelectValue
+                  placeholder={
+                    vmsLoading || loadVmsMutation.isPending
+                      ? "Loading VPS list…"
+                      : virtualMachines.length === 0
+                        ? "Load VPS list first"
+                        : "Select VPS"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">
+                  {vmsLoading || loadVmsMutation.isPending
+                    ? "Loading VPS list…"
+                    : virtualMachines.length === 0
+                      ? "Load VPS list first"
+                      : "Select VPS"}
+                </SelectItem>
+                {virtualMachines.map((vm) => (
+                  <SelectItem key={vm.id} value={String(vm.id)}>
+                    {vm.hostname} ({vm.state})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="manual-vm-id">Or VM ID</Label>

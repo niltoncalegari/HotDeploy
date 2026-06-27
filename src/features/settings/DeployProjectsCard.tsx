@@ -23,6 +23,13 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { listGitHubRepos } from "@/lib/github/client";
 import { githubRepoLabel, parseGithubRepoFromUrl } from "@/lib/github/repo";
@@ -240,19 +247,22 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="project-profile">Connection profile</Label>
-            <select
-              id="project-profile"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+            <Select
               value={connectionProfileId || workspace.connectionProfiles[0]?.id || ""}
-              onChange={(event) => setConnectionProfileId(event.target.value)}
+              onValueChange={setConnectionProfileId}
               disabled={workspace.connectionProfiles.length === 0}
             >
-              {workspace.connectionProfiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="project-profile" className="w-full">
+                <SelectValue placeholder="Select profile" />
+              </SelectTrigger>
+              <SelectContent>
+                {workspace.connectionProfiles.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {profile.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="docker-project-name">Docker project name</Label>
@@ -265,17 +275,20 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="deploy-source-type">Deploy source</Label>
-            <select
-              id="deploy-source-type"
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+            <Select
               value={deploySourceType}
-              onChange={(event) =>
-                setDeploySourceType(event.target.value as "local" | "github")
+              onValueChange={(value) =>
+                setDeploySourceType(value as "local" | "github")
               }
             >
-              <option value="local">Local compose file</option>
-              <option value="github">GitHub repository</option>
-            </select>
+              <SelectTrigger id="deploy-source-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">Local compose file</SelectItem>
+                <SelectItem value="github">GitHub repository</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           {deploySourceType === "local" ? (
             <div className="space-y-2 md:col-span-2">
@@ -297,27 +310,29 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
               {githubRepos.length > 0 ? (
                 <div className="space-y-2">
                   <Label htmlFor="github-repo-picker">Repository from GitHub</Label>
-                  <select
-                    id="github-repo-picker"
-                    className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm"
-                    value={selectedRepoFullName}
-                    onChange={(event) => {
-                      setSelectedRepoFullName(event.target.value);
-                      if (event.target.value) {
-                        setRepositoryUrl(
-                          `https://github.com/${event.target.value}`,
-                        );
+                  <Select
+                    value={selectedRepoFullName || "__none__"}
+                    onValueChange={(value) => {
+                      const next = value === "__none__" ? "" : value;
+                      setSelectedRepoFullName(next);
+                      if (next) {
+                        setRepositoryUrl(`https://github.com/${next}`);
                       }
                     }}
                   >
-                    <option value="">Select repository…</option>
-                    {githubRepos.map((repo) => (
-                      <option key={repo.id} value={repo.fullName}>
-                        {repo.fullName}
-                        {repo.private ? " (private)" : ""}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="github-repo-picker" className="w-full">
+                      <SelectValue placeholder="Select repository…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Select repository…</SelectItem>
+                      {githubRepos.map((repo) => (
+                        <SelectItem key={repo.id} value={repo.fullName}>
+                          {repo.fullName}
+                          {repo.private ? " (private)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : null}
               <Label htmlFor="repository-url">Or GitHub repository URL</Label>

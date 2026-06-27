@@ -2,24 +2,34 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import {
+  checkAutoDeployRun,
   clearGitHubPat,
   commitWorkflowFile,
+  createGitHubEnvironment,
+  deleteGitHubEnvironment,
   deleteGitHubSecret,
   deleteGitHubVariable,
   generateWorkflowYaml,
+  getGitHubAuthMethod,
   getGitHubStatus,
   getRunnerStatus,
   getSshStatus,
   installSelfHostedRunner,
+  listGitHubEnvironments,
   listGitHubRepos,
   listGitHubSecrets,
   listGitHubVariables,
   parseGitHubError,
   parseGithubRepoUrl,
+  pollGitHubDeviceToken,
+  rotateRunnerRegistration,
   saveGitHubPat,
   saveSshCredentials,
+  startGitHubDeviceFlow,
+  syncEnvProfileToGitHubSecrets,
   testGitHubConnection,
   testSshConnection,
+  uninstallSelfHostedRunner,
   upsertGitHubSecret,
   upsertGitHubVariable,
 } from "@/lib/github/client";
@@ -143,5 +153,23 @@ describe("GitHub invoke wrappers", () => {
     await parseGithubRepoUrl("https://github.com/o/r");
 
     expect(invoke).toHaveBeenCalledTimes(6);
+  });
+
+  it("phase 8 invoke wrappers", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue(undefined);
+
+    await uninstallSelfHostedRunner("p", "o", "r");
+    await rotateRunnerRegistration("p", "o", "r");
+    await syncEnvProfileToGitHubSecrets("o", "r", "K=v", ["K"]);
+    await listGitHubEnvironments("o", "r");
+    await createGitHubEnvironment("o", "r", "staging");
+    await deleteGitHubEnvironment("o", "r", "staging");
+    await checkAutoDeployRun("o", "r", "main", 1);
+    await startGitHubDeviceFlow();
+    await pollGitHubDeviceToken("device");
+    await getGitHubAuthMethod();
+
+    expect(invoke).toHaveBeenCalledTimes(10);
   });
 });

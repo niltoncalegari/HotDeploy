@@ -17,6 +17,9 @@ import {
 import { EmptyState, EmptyStateButton } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GitHubSecretsPanel } from "@/features/github/GitHubSecretsPanel";
+import { GitHubEnvironmentsPanel } from "@/features/github/GitHubEnvironmentsPanel";
+import { EnvProfileSecretsSync } from "@/features/github/EnvProfileSecretsSync";
+import { AutoDeployCard } from "@/features/github/AutoDeployCard";
 import { RunnerStatusCard } from "@/features/github/RunnerStatusCard";
 import { WorkflowGeneratorDialog } from "@/features/github/WorkflowGeneratorDialog";
 import { LifecycleActions } from "@/features/projects/LifecycleActions";
@@ -216,7 +219,21 @@ export function ProjectDetailPage() {
               profileId={activeProfile.id}
               githubLink={githubLink}
             />
+            {localConfig && workspace ? (
+              <AutoDeployCard
+                config={localConfig}
+                githubLink={githubLink}
+                workspace={workspace}
+              />
+            ) : null}
             <GitHubSecretsPanel githubLink={githubLink} />
+            <GitHubEnvironmentsPanel githubLink={githubLink} />
+            {localConfig?.environmentProfile ? (
+              <EnvProfileSecretsSync
+                githubLink={githubLink}
+                environmentProfile={localConfig.environmentProfile}
+              />
+            ) : null}
             <WorkflowGeneratorDialog
               open={workflowOpen}
               onOpenChange={setWorkflowOpen}

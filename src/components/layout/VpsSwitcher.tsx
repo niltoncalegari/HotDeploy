@@ -1,6 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Server } from "lucide-react";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { saveWorkspace } from "@/lib/workspace/client";
 import { useWorkspace } from "@/lib/workspace/hooks";
 import type { WorkspaceConfig } from "@/lib/workspace/schemas";
@@ -35,18 +42,18 @@ export function VpsSwitcher() {
       <label htmlFor="vps-switcher" className="text-muted-foreground text-sm">
         Active VPS
       </label>
-      <select
-        id="vps-switcher"
-        className="border-input bg-background h-8 rounded-md border px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-        value={activeId}
-        onChange={(event) => handleChange(event.target.value)}
-      >
-        {workspace.connectionProfiles.map((profile) => (
-          <option key={profile.id} value={profile.id}>
-            {profile.label} (VM {profile.virtualMachineId})
-          </option>
-        ))}
-      </select>
+      <Select value={activeId} onValueChange={handleChange}>
+        <SelectTrigger id="vps-switcher" size="sm" className="min-w-[12rem]">
+          <SelectValue placeholder="Select VPS" />
+        </SelectTrigger>
+        <SelectContent>
+          {workspace.connectionProfiles.map((profile) => (
+            <SelectItem key={profile.id} value={profile.id}>
+              {profile.label} (VM {profile.virtualMachineId})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
