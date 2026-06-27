@@ -1,10 +1,10 @@
 export interface ReleaseNotes {
   version: string;
-  features: string[];
+  features?: string[];
   fixes?: string[];
 }
 
-function compareSemverDesc(left: string, right: string): number {
+export function compareSemverDesc(left: string, right: string): number {
   const leftParts = left.split(".").map(Number);
   const rightParts = right.split(".").map(Number);
 
@@ -20,6 +20,13 @@ function compareSemverDesc(left: string, right: string): number {
 
 /** User-facing release notes. Prefer newest-first in source; always sorted at read time. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
+  {
+    version: "0.8.5",
+    fixes: [
+      "Onboarding skip-setup checkbox persists to workspace immediately on toggle",
+      "OnboardingGate reads updated workspace cache after skip-setup save",
+    ],
+  },
   {
     version: "0.8.4",
     features: [

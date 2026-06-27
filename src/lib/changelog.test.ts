@@ -2,13 +2,19 @@
 import { describe, expect, it } from "vitest";
 
 import { APP_VERSION } from "@/lib/app-version";
-import { RELEASE_NOTES, getReleaseNotesNewestFirst } from "@/lib/changelog";
+import {
+  RELEASE_NOTES,
+  compareSemverDesc,
+  getReleaseNotesNewestFirst,
+} from "@/lib/changelog";
 
 describe("RELEASE_NOTES", () => {
-  it("includes the current package version with features", () => {
+  it("includes the current package version with release notes", () => {
     const current = RELEASE_NOTES.find((entry) => entry.version === APP_VERSION);
     expect(current).toBeDefined();
-    expect(current?.features.length).toBeGreaterThan(0);
+    const noteCount =
+      (current?.features?.length ?? 0) + (current?.fixes?.length ?? 0);
+    expect(noteCount).toBeGreaterThan(0);
   });
 
   it("has unique version entries", () => {
@@ -24,5 +30,11 @@ describe("RELEASE_NOTES", () => {
         .map((entry) => entry.version)
         .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }))[0],
     );
+  });
+
+  it("compares equal semver as tied", () => {
+    expect(compareSemverDesc("0.8.5", "0.8.5")).toBe(0);
+    expect(compareSemverDesc("0.8.5", "0.8.4")).toBeLessThan(0);
+    expect(compareSemverDesc("0.8.4", "0.8.5")).toBeGreaterThan(0);
   });
 });

@@ -64,6 +64,20 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_completed_round_trips_as_true() {
+        let config = WorkspaceConfig {
+            onboarding_completed: Some(true),
+            ..WorkspaceConfig::default()
+        };
+
+        let json = serde_json::to_string(&config).expect("serialize workspace");
+        assert!(json.contains("\"onboardingCompleted\":true"));
+
+        let parsed: WorkspaceConfig = serde_json::from_str(&json).expect("deserialize workspace");
+        assert_eq!(parsed.onboarding_completed, Some(true));
+    }
+
+    #[test]
     fn workspace_round_trips_through_json() {
         let config = WorkspaceConfig {
             version: WORKSPACE_VERSION,

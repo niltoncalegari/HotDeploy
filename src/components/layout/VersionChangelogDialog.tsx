@@ -60,7 +60,7 @@ export function VersionChangelogDialog() {
                       <Badge variant="default">Current</Badge>
                     ) : null}
                   </div>
-                  {entry.features.length > 0 ? (
+                  {entry.features && entry.features.length > 0 ? (
                     <div className="mt-2">
                       <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                         Features

@@ -25,7 +25,10 @@ import {
 } from "@/lib/github/client";
 import { saveWorkspace } from "@/lib/workspace/client";
 import { useWorkspace } from "@/lib/workspace/hooks";
-import type { WorkspaceConfig } from "@/lib/workspace/schemas";
+import {
+  defaultWorkspaceConfig,
+  type WorkspaceConfig,
+} from "@/lib/workspace/schemas";
 
 const STEPS = [
   "Welcome",
@@ -40,7 +43,11 @@ export function OnboardingWizard() {
   const queryClient = useQueryClient();
   const { data: workspace } = useWorkspace();
   const [step, setStep] = useState(0);
-  const [skipSetup, setSkipSetup] = useState(false);
+  const [skipSetupOverride, setSkipSetupOverride] = useState<boolean | null>(
+    null,
+  );
+  const skipSetup =
+    skipSetupOverride ?? workspace?.onboardingCompleted === true;
   const [apiKey, setApiKey] = useState("");
   const [vmId, setVmId] = useState("");
   const [pat, setPat] = useState("");
@@ -58,12 +65,26 @@ export function OnboardingWizard() {
   const completeMutation = useMutation({
     mutationFn: async (config: WorkspaceConfig) => {
       await saveWorkspace(config);
+      return config;
     },
-    onSuccess: async () => {
+    onSuccess: async (config) => {
+      queryClient.setQueryData(["workspace"], config);
       await queryClient.invalidateQueries({ queryKey: ["workspace"] });
       navigate("/", { replace: true });
       toast.success("Setup complete. Welcome to HotDeploy!");
     },
+    onError: (error) => toast.error(String(error)),
+  });
+
+  const persistSkipSetupMutation = useMutation({
+    mutationFn: async (config: WorkspaceConfig) => {
+      await saveWorkspace(config);
+      return config;
+    },
+    onSuccess: (config) => {
+      queryClient.setQueryData(["workspace"], config);
+    },
+    onError: (error) => toast.error(String(error)),
   });
 
   const saveProviderMutation = useMutation({
@@ -98,12 +119,17 @@ export function OnboardingWizard() {
   });
 
   const finish = () => {
-    if (!workspace) {
-      return;
-    }
     completeMutation.mutate({
-      ...workspace,
+      ...(workspace ?? defaultWorkspaceConfig),
       onboardingCompleted: true,
+    });
+  };
+
+  const handleSkipSetupChange = (checked: boolean) => {
+    setSkipSetupOverride(checked);
+    persistSkipSetupMutation.mutate({
+      ...(workspace ?? defaultWorkspaceConfig),
+      onboardingCompleted: checked,
     });
   };
 
@@ -132,7 +158,9 @@ export function OnboardingWizard() {
                   type="checkbox"
                   className="border-input mt-0.5 size-4 rounded border"
                   checked={skipSetup}
-                  onChange={(event) => setSkipSetup(event.target.checked)}
+                  onChange={(event) =>
+                    handleSkipSetupChange(event.target.checked)
+                  }
                 />
                 <Label
                   htmlFor="onboard-skip-setup"

@@ -6,15 +6,16 @@ import { ProjectDetailPage } from "@/features/projects/ProjectDetailPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { useWorkspace } from "@/lib/workspace/hooks";
+import { defaultWorkspaceConfig } from "@/lib/workspace/schemas";
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
-  const { data: workspace, isLoading } = useWorkspace();
+  const { data: workspace = defaultWorkspaceConfig, isLoading } = useWorkspace();
 
   if (isLoading) {
     return null;
   }
 
-  if (!workspace.onboardingCompleted) {
+  if (workspace.onboardingCompleted !== true) {
     return <Navigate to="/onboarding" replace />;
   }
 
