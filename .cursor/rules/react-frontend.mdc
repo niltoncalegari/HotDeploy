@@ -18,5 +18,5 @@ alwaysApply: false
 const { data } = useQuery({ queryKey: ["projects"], queryFn: listProjects });
 
 // ❌ BAD — no direct fetch to Hostinger from React
-fetch("https://api.hostinger.com/...");
+fetch("https://developers.hostinger.com/...");
 ```

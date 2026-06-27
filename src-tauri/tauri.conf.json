@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.hostinger.com https://api.digitalocean.com ipc: http://localhost:* ws://localhost:*; img-src 'self' data: asset: https://asset.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://developers.hostinger.com https://api.digitalocean.com ipc: http://localhost:* ws://localhost:*; img-src 'self' data: asset: https://asset.localhost"
     }
   },
   "plugins": {
