@@ -4,8 +4,29 @@ export interface ReleaseNotes {
   fixes?: string[];
 }
 
-/** User-facing release notes — newest first. Keep in sync with package.json on each bump. */
+function compareSemverDesc(left: string, right: string): number {
+  const leftParts = left.split(".").map(Number);
+  const rightParts = right.split(".").map(Number);
+
+  for (let index = 0; index < 3; index += 1) {
+    const diff = (rightParts[index] ?? 0) - (leftParts[index] ?? 0);
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+
+  return 0;
+}
+
+/** User-facing release notes. Prefer newest-first in source; always sorted at read time. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
+  {
+    version: "0.8.4",
+    features: [
+      "Release notes sorted newest-first with current version highlighted",
+      "Current version badge and primary styling in the release notes dialog",
+    ],
+  },
   {
     version: "0.8.3",
     features: [
@@ -41,3 +62,9 @@ export const RELEASE_NOTES: ReleaseNotes[] = [
     ],
   },
 ];
+
+export function getReleaseNotesNewestFirst(): ReleaseNotes[] {
+  return [...RELEASE_NOTES].sort((left, right) =>
+    compareSemverDesc(left.version, right.version),
+  );
+}
