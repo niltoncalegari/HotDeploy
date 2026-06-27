@@ -124,7 +124,7 @@ Mandatory before every PR. See [docs/QUALITY.md](docs/QUALITY.md). Never edit `b
 
 ## 8. Agent quick reference
 
-1. Read `AGENTS.md`, `CONTEXT.md`, this file.
+1. Read `AGENTS.md`, `CONTEXT.md` (includes [docs/COMMITS.md](docs/COMMITS.md)), this file.
 2. Read the feature spec.
 3. Write failing test (RED).
 4. Implement (GREEN).

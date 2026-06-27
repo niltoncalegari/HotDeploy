@@ -107,7 +107,7 @@ Detail: [PLAN.md](PLAN.md)
 ## 10. Rules for agents
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md) before any feature slice.
-2. Read [CONTEXT.md](CONTEXT.md) before changing domain behavior.
+2. Read [CONTEXT.md](CONTEXT.md) before changing domain behavior — includes mandatory [docs/COMMITS.md](docs/COMMITS.md) commit and version rules.
 3. Read the relevant `specs/features/*.spec.md` before coding.
 4. **Open or update the spec first** — no spec, no PR.
 5. Do not create new `.md` files unless listed in §7 or explicitly requested.
@@ -117,6 +117,7 @@ Detail: [PLAN.md](PLAN.md)
 9. Run `pnpm quality` before every PR.
 10. Never edit `baseline.json` to pass the gate.
 11. For PRs, follow [docs/PR-WORKFLOW.md](docs/PR-WORKFLOW.md).
+12. For commits and version bumps, follow [docs/COMMITS.md](docs/COMMITS.md) (referenced from [CONTEXT.md](CONTEXT.md)).
 
 ## 11. Quality gate
 

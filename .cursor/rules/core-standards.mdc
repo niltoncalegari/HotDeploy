@@ -5,7 +5,7 @@ alwaysApply: true
 
 # HotDeploy Core Standards
 
-- Read `AGENTS.md` and `CONTEXT.md` before domain or feature work.
+- Read `AGENTS.md` and `CONTEXT.md` before domain or feature work (`CONTEXT.md` mandates [docs/COMMITS.md](docs/COMMITS.md) for commits and versioning).
 - All committed artifacts in **English** (code, docs, UI, commits, PRs).
 - API keys and secrets only in Rust keychain — never in React or git.
 - Hostinger-first v1; provider logic stays in `src-tauri/`, not scattered in UI.

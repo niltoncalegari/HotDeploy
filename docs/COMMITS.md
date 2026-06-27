@@ -1,6 +1,8 @@
 # Commit and Version Guidelines
 
-> How to split work into commits, bump semver, and push to `main`.
+> **Agent rule:** mandatory for all agents — referenced from [CONTEXT.md](../CONTEXT.md) and [AGENTS.md](../AGENTS.md).
+
+How to split work into commits, bump semver, and push to `main`.
 
 ## Principles
 
@@ -109,6 +111,7 @@ Update this file whenever the sidebar version label changes.
 
 ## Related docs
 
+- [CONTEXT.md](../CONTEXT.md) — domain language and agent workflow rules (mandates this file)
 - [CONVENTIONS.md](CONVENTIONS.md) — code style and commit types
 - [PR-WORKFLOW.md](PR-WORKFLOW.md) — branch and PR checklist
 - [PLAN.md](../PLAN.md) — phase → minor version mapping

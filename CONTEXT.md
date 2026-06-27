@@ -159,6 +159,18 @@ When adding a provider, update this file and add an ADR under `docs/adr/`.
 - Non-Docker workloads
 - Production code signing / auto-update (documented in RUNBOOK; updater scaffolded, signing certs user-provided)
 
+## Agent workflow rules
+
+Agents **must** follow these standards in every session (in addition to [AGENTS.md](AGENTS.md)):
+
+| Rule | Reference |
+|---|---|
+| **Commit splitting and versioning** | [docs/COMMITS.md](docs/COMMITS.md) — one context per commit, bump semver on user-visible changes, update `src/lib/changelog.ts`, `pnpm quality` before push |
+| **Domain language** | This file — use terms from the glossary above |
+| **Security** | [Security rules](#security-rules) — secrets stay in Rust |
+
+Before committing or pushing: read [docs/COMMITS.md](docs/COMMITS.md) and apply its patch vs phase policy.
+
 ## Ubiquitous language checklist for agents
 
 Before changing domain behavior, verify:
