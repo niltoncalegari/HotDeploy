@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderKanban, Plus, Trash2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
@@ -12,9 +12,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { listGitHubRepos } from "@/lib/github/client";
+import { githubRepoLabel, parseGithubRepoFromUrl } from "@/lib/github/repo";
 import { saveWorkspace } from "@/lib/workspace/client";
 import {
   createDeployProjectConfig,
@@ -36,7 +47,16 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
   );
   const [composeFilePath, setComposeFilePath] = useState("");
   const [repositoryUrl, setRepositoryUrl] = useState("");
+  const [selectedRepoFullName, setSelectedRepoFullName] = useState("");
   const [environmentProfile, setEnvironmentProfile] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const { data: githubRepos = [] } = useQuery({
+    queryKey: ["github-repos"],
+    queryFn: () => listGitHubRepos(1),
+    enabled: deploySourceType === "github",
+    retry: false,
+  });
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
@@ -90,10 +110,21 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
       return;
     }
 
-    if (deploySourceType === "github" && !repositoryUrl.trim()) {
-      toast.error("Enter a GitHub repository URL.");
+    if (deploySourceType === "github" && !repositoryUrl.trim() && !selectedRepoFullName) {
+      toast.error("Select or enter a GitHub repository.");
       return;
     }
+
+    const resolvedUrl =
+      repositoryUrl.trim() ||
+      (selectedRepoFullName
+        ? `https://github.com/${selectedRepoFullName}`
+        : "");
+
+    const githubLink = parseGithubRepoFromUrl(resolvedUrl) ?? undefined;
+    const selectedRepo = githubRepos.find(
+      (repo) => repo.fullName === selectedRepoFullName,
+    );
 
     const project = createDeployProjectConfig({
       name: name.trim(),
@@ -102,8 +133,14 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
       deploySource:
         deploySourceType === "local"
           ? { type: "local", composeFilePath: composeFilePath.trim() }
-          : { type: "github", repositoryUrl: repositoryUrl.trim() },
+          : { type: "github", repositoryUrl: resolvedUrl },
       environmentProfile: environmentProfile.trim() || undefined,
+      githubLink: githubLink
+        ? {
+            ...githubLink,
+            defaultBranch: selectedRepo?.defaultBranch,
+          }
+        : undefined,
     });
 
     persist([...workspace.deployProjects, project]);
@@ -111,14 +148,19 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
     setDockerProjectName("");
     setComposeFilePath("");
     setRepositoryUrl("");
+    setSelectedRepoFullName("");
     setEnvironmentProfile("");
     toast.success("Deploy project saved.");
   };
 
-  const handleRemove = (projectId: string) => {
+  const confirmRemove = () => {
+    if (!pendingDeleteId) {
+      return;
+    }
     persist(
-      workspace.deployProjects.filter((project) => project.id !== projectId),
+      workspace.deployProjects.filter((project) => project.id !== pendingDeleteId),
     );
+    setPendingDeleteId(null);
     toast.success("Deploy project removed.");
   };
 
@@ -136,9 +178,10 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {workspace.deployProjects.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No deploy projects configured yet.
-          </p>
+          <EmptyState
+            title="No deploy projects"
+            description="Register a Compose file or GitHub repo to deploy from the Projects page."
+          />
         ) : (
           <ul className="space-y-3">
             {workspace.deployProjects.map((project) => {
@@ -164,12 +207,17 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
                         ? project.deploySource.composeFilePath
                         : project.deploySource.repositoryUrl}
                     </p>
+                    {project.githubLink ? (
+                      <p className="text-muted-foreground text-sm">
+                        GitHub: {githubRepoLabel(project.githubLink)}
+                      </p>
+                    ) : null}
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleRemove(project.id)}
+                    onClick={() => setPendingDeleteId(project.id)}
                     aria-label={`Remove ${project.name}`}
                   >
                     <Trash2 className="size-4" />
@@ -246,12 +294,38 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
             </div>
           ) : (
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="repository-url">GitHub repository URL</Label>
+              {githubRepos.length > 0 ? (
+                <div className="space-y-2">
+                  <Label htmlFor="github-repo-picker">Repository from GitHub</Label>
+                  <select
+                    id="github-repo-picker"
+                    className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm"
+                    value={selectedRepoFullName}
+                    onChange={(event) => {
+                      setSelectedRepoFullName(event.target.value);
+                      if (event.target.value) {
+                        setRepositoryUrl(
+                          `https://github.com/${event.target.value}`,
+                        );
+                      }
+                    }}
+                  >
+                    <option value="">Select repository…</option>
+                    {githubRepos.map((repo) => (
+                      <option key={repo.id} value={repo.fullName}>
+                        {repo.fullName}
+                        {repo.private ? " (private)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+              <Label htmlFor="repository-url">Or GitHub repository URL</Label>
               <Input
                 id="repository-url"
                 value={repositoryUrl}
                 onChange={(event) => setRepositoryUrl(event.target.value)}
-                placeholder="https://github.com/user/mflow"
+                placeholder="https://github.com/user/repo"
               />
             </div>
           )}
@@ -280,6 +354,33 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
           Add deploy project
         </Button>
       </CardContent>
+
+      <Dialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteId(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove deploy project?</DialogTitle>
+            <DialogDescription>
+              This removes the local deploy configuration only. Remote Docker
+              Projects on the VPS are not deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDeleteId(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmRemove}>
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

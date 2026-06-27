@@ -13,6 +13,13 @@ export const connectionProfileSchema = z.object({
   label: z.string().min(1),
   provider: providerIdSchema,
   virtualMachineId: z.number().int().positive(),
+  sshHost: z.string().optional(),
+});
+
+export const githubLinkSchema = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  defaultBranch: z.string().optional(),
 });
 
 export const deploySourceSchema = z.discriminatedUnion("type", [
@@ -33,6 +40,7 @@ export const deployProjectConfigSchema = z.object({
   dockerProjectName: z.string().min(1),
   deploySource: deploySourceSchema,
   environmentProfile: z.string().optional(),
+  githubLink: githubLinkSchema.optional(),
 });
 
 export const workspaceConfigSchema = z.object({
@@ -48,6 +56,7 @@ export type ThemeMode = z.infer<typeof themeModeSchema>;
 export type WorkspacePreferences = z.infer<typeof workspacePreferencesSchema>;
 export type ConnectionProfile = z.infer<typeof connectionProfileSchema>;
 export type DeploySource = z.infer<typeof deploySourceSchema>;
+export type GitHubLink = z.infer<typeof githubLinkSchema>;
 export type DeployProjectConfig = z.infer<typeof deployProjectConfigSchema>;
 export type WorkspaceConfig = z.infer<typeof workspaceConfigSchema>;
 
