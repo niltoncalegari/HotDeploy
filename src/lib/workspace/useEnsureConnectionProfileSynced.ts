@@ -34,8 +34,11 @@ export function useEnsureConnectionProfileSynced() {
       return;
     }
 
+    const latestWorkspace =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
+
     const nextWorkspace = ensureConnectionProfileFromCredentials(
-      workspace,
+      latestWorkspace,
       credentials.virtualMachineId,
     );
 
@@ -45,8 +48,10 @@ export function useEnsureConnectionProfileSynced() {
     }
 
     syncedVmRef.current = credentials.virtualMachineId;
-    void saveWorkspace(nextWorkspace).then(() => {
-      queryClient.setQueryData(["workspace"], nextWorkspace);
-    });
+    void queryClient.cancelQueries({ queryKey: ["workspace"] }).then(() =>
+      saveWorkspace(nextWorkspace).then(() => {
+        queryClient.setQueryData(["workspace"], nextWorkspace);
+      }),
+    );
   }, [workspace, workspaceFetched, credentials, credentialsFetched, queryClient]);
 }

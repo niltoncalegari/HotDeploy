@@ -58,21 +58,47 @@ export function ConnectionProfilesCard({
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
-    onError: () => {
-      toast.error("Failed to save connection profile.");
-    },
   });
 
-  const persist = (nextProfiles: ConnectionProfile[], activeId?: string) => {
-    const nextConfig: WorkspaceConfig = {
-      ...workspace,
-      connectionProfiles: nextProfiles,
-      activeConnectionProfileId:
-        activeId ?? workspace.activeConnectionProfileId,
-    };
+  const persistConfig = (
+    nextConfig: WorkspaceConfig,
+    options?: { successMessage?: string; onSuccess?: () => void },
+  ) => {
+    const previousConfig =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
 
     queryClient.setQueryData(["workspace"], nextConfig);
-    saveMutation.mutate(nextConfig);
+    saveMutation.mutate(nextConfig, {
+      onSuccess: () => {
+        if (options?.successMessage) {
+          toast.success(options.successMessage);
+        }
+        options?.onSuccess?.();
+      },
+      onError: () => {
+        queryClient.setQueryData(["workspace"], previousConfig);
+        toast.error("Failed to save connection profile.");
+      },
+    });
+  };
+
+  const persist = (
+    nextProfiles: ConnectionProfile[],
+    activeId?: string,
+    options?: { successMessage?: string; onSuccess?: () => void },
+  ) => {
+    const previousConfig =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
+
+    persistConfig(
+      {
+        ...previousConfig,
+        connectionProfiles: nextProfiles,
+        activeConnectionProfileId:
+          activeId ?? previousConfig.activeConnectionProfileId,
+      },
+      options,
+    );
   };
 
   const handleAdd = () => {
@@ -85,10 +111,13 @@ export function ConnectionProfilesCard({
     const profile = createConnectionProfile(label.trim(), vmId, provider);
     const nextProfiles = [...workspace.connectionProfiles, profile];
 
-    persist(nextProfiles, workspace.activeConnectionProfileId ?? profile.id);
-    setLabel("");
-    setVirtualMachineId("");
-    toast.success("Connection profile added.");
+    persist(nextProfiles, workspace.activeConnectionProfileId ?? profile.id, {
+      successMessage: "Connection profile added.",
+      onSuccess: () => {
+        setLabel("");
+        setVirtualMachineId("");
+      },
+    });
   };
 
   const confirmRemove = () => {
@@ -114,10 +143,10 @@ export function ConnectionProfilesCard({
       deployProjects,
     };
 
-    queryClient.setQueryData(["workspace"], nextConfig);
-    saveMutation.mutate(nextConfig);
-    setPendingDeleteId(null);
-    toast.success("Connection profile removed.");
+    persistConfig(nextConfig, {
+      successMessage: "Connection profile removed.",
+      onSuccess: () => setPendingDeleteId(null),
+    });
   };
 
   return (

@@ -131,25 +131,62 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
-    onError: (error, config) => {
+  });
+
+  const commitWorkspace = async (
+    nextConfig: WorkspaceConfig,
+    options?: { successMessage?: string; onSuccess?: () => void },
+  ) => {
+    await queryClient.cancelQueries({ queryKey: ["workspace"] });
+    const previousConfig =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
+
+    queryClient.setQueryData(["workspace"], nextConfig);
+
+    try {
+      await saveMutation.mutateAsync(nextConfig);
+      if (options?.successMessage) {
+        toast.success(options.successMessage);
+      }
+      options?.onSuccess?.();
+    } catch (error) {
+      queryClient.setQueryData(["workspace"], previousConfig);
       const lastProject =
-        config.deployProjects[config.deployProjects.length - 1];
+        nextConfig.deployProjects[nextConfig.deployProjects.length - 1];
       void logDiagnosticError("DeployProjectsCard.save", error, {
         deployProjectName: lastProject?.name,
         dockerProjectName: lastProject?.dockerProjectName,
       });
       toast.error("Failed to save deploy project.");
-    },
-  });
+    } finally {
+      void queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    }
+  };
 
-  const persist = (nextProjects: DeployProjectConfig[]) => {
-    const nextConfig: WorkspaceConfig = {
-      ...workspace,
-      deployProjects: nextProjects,
-    };
+  const persist = (
+    nextProjects: DeployProjectConfig[],
+    options?: { successMessage?: string; onSuccess?: () => void },
+  ) => {
+    const currentConfig =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
 
-    queryClient.setQueryData(["workspace"], nextConfig);
-    saveMutation.mutate(nextConfig);
+    void commitWorkspace(
+      {
+        ...currentConfig,
+        deployProjects: nextProjects,
+      },
+      options,
+    );
+  };
+
+  const resetAddForm = () => {
+    setName("");
+    setDockerProjectName(dockerProjectHint);
+    setComposeFilePath("");
+    setRepositoryUrl("");
+    setSelectedRepoFullName("");
+    setEnvironmentProfile("");
+    setDockerProjectManualEntry(false);
   };
 
   const clearFieldError = (field: keyof DeployProjectFieldErrors) => {
@@ -207,6 +244,9 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
   };
 
   const handleAdd = () => {
+    if (saveMutation.isPending) {
+      return;
+    }
     const errors = validateDeployProjectForm(
       {
         name,
@@ -258,26 +298,29 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
         : undefined,
     });
 
-    persist([...workspace.deployProjects, project]);
-    setName("");
-    setDockerProjectName(dockerProjectHint);
-    setComposeFilePath("");
-    setRepositoryUrl("");
-    setSelectedRepoFullName("");
-    setEnvironmentProfile("");
-    setDockerProjectManualEntry(false);
-    toast.success("Deploy project saved.");
+    const currentConfig =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
+
+    persist([...currentConfig.deployProjects, project], {
+      successMessage: "Deploy project saved.",
+      onSuccess: resetAddForm,
+    });
   };
 
   const confirmRemove = () => {
-    if (!pendingDeleteId) {
+    if (!pendingDeleteId || saveMutation.isPending) {
       return;
     }
+    const deleteId = pendingDeleteId;
+    const currentConfig =
+      queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ?? workspace;
     persist(
-      workspace.deployProjects.filter((project) => project.id !== pendingDeleteId),
+      currentConfig.deployProjects.filter((project) => project.id !== deleteId),
+      {
+        successMessage: "Deploy project removed.",
+        onSuccess: () => setPendingDeleteId(null),
+      },
     );
-    setPendingDeleteId(null);
-    toast.success("Deploy project removed.");
   };
 
   const noConnectionProfiles = workspace.connectionProfiles.length === 0;
