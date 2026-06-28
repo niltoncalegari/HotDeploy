@@ -1,4 +1,5 @@
 pub mod credentials;
+pub mod diagnostics;
 pub mod github;
 pub mod hostinger;
 pub mod ssh;
@@ -7,6 +8,10 @@ pub mod workspace;
 pub use credentials::{
     clear_credentials, clear_provider_credentials, get_credentials_status,
     get_provider_credentials_status, save_credentials, save_provider_credentials,
+};
+pub use diagnostics::{
+    append_diagnostic_log, export_diagnostics_report, get_diagnostic_log_path,
+    open_diagnostic_log_folder, read_diagnostic_log_tail,
 };
 pub use github::{
     check_auto_deploy_run, clear_github_pat_command, commit_workflow_file,

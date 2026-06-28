@@ -364,6 +364,37 @@ pub fn ssh_configured(app: &AppHandle) -> Result<bool, CredentialStoreError> {
         .is_some_and(|value| !value.is_empty()))
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialsPresence {
+    pub hostinger_api_key: bool,
+    pub digitalocean_api_key: bool,
+    pub github_token: bool,
+    pub ssh_private_key: bool,
+}
+
+pub fn credentials_presence(app: &AppHandle) -> Result<CredentialsPresence, CredentialStoreError> {
+    let credentials = read_file(app)?;
+    Ok(CredentialsPresence {
+        hostinger_api_key: credentials
+            .hostinger_api_key
+            .as_ref()
+            .is_some_and(|value| !value.is_empty()),
+        digitalocean_api_key: credentials
+            .digitalocean_api_key
+            .as_ref()
+            .is_some_and(|value| !value.is_empty()),
+        github_token: credentials
+            .github_pat
+            .as_ref()
+            .is_some_and(|value| !value.is_empty()),
+        ssh_private_key: credentials
+            .ssh_private_key
+            .as_ref()
+            .is_some_and(|value| !value.is_empty()),
+    })
+}
+
 trait IfEmpty {
     fn if_empty_then(self, fallback: String) -> String;
 }

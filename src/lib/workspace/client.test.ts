@@ -39,6 +39,26 @@ describe("workspace client", () => {
     });
   });
 
+  it("logs and rethrows when save fails", async () => {
+    mockedInvoke
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockResolvedValueOnce(undefined);
+
+    await expect(saveWorkspace(defaultWorkspaceConfig)).rejects.toThrow(
+      "disk full",
+    );
+
+    expect(mockedInvoke).toHaveBeenNthCalledWith(
+      2,
+      "append_diagnostic_log",
+      expect.objectContaining({
+        level: "error",
+        source: "save_workspace_command",
+        message: "disk full",
+      }),
+    );
+  });
+
   it("reads workspace file path", async () => {
     mockedInvoke.mockResolvedValueOnce("/tmp/workspace.json");
 

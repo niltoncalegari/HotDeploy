@@ -21,6 +21,19 @@ export function compareSemverDesc(left: string, right: string): number {
 /** User-facing release notes. Prefer newest-first in source; always sorted at read time. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
   {
+    version: "0.9.2",
+    features: [
+      "Projects home split into VPS & Containers and GitHub CI tabs",
+      "Settings section tabs use URL deep links (e.g. ?tab=deploy)",
+      "Deploy project form with VPS docker project picker and inline validation",
+      "Diagnostics card — local log file and Copy issue report for GitHub",
+    ],
+    fixes: [
+      "Connection profile auto-synced from Hostinger credentials on app start",
+      "CI empty state links directly to Deploy settings to link a repository",
+    ],
+  },
+  {
     version: "0.9.1",
     fixes: [
       "GitHub Device Flow sends required User-Agent header (fixes 403 on connect)",

@@ -1,6 +1,7 @@
 mod commands;
 mod credentials;
 mod deployment;
+mod diagnostics;
 mod github;
 mod hostinger;
 mod provider;
@@ -8,25 +9,26 @@ mod ssh;
 mod workspace;
 
 use commands::{
-    check_auto_deploy_run, clear_credentials, clear_deployment_history_command,
-    clear_github_pat_command, clear_provider_credentials, clear_ssh_credentials_command,
-    commit_workflow_file, connect_github_from_gh_cli, create_github_environment,
-    delete_github_environment, delete_github_secret, delete_github_variable, deploy_project,
-    dispatch_github_workflow, generate_workflow_yaml_command, get_credentials_status,
-    get_deployment_history, get_github_app_config_command, get_github_auth_method_command,
+    append_diagnostic_log, check_auto_deploy_run, clear_credentials,
+    clear_deployment_history_command, clear_github_pat_command, clear_provider_credentials,
+    clear_ssh_credentials_command, commit_workflow_file, connect_github_from_gh_cli,
+    create_github_environment, delete_github_environment, delete_github_secret,
+    delete_github_variable, deploy_project, dispatch_github_workflow, export_diagnostics_report,
+    generate_workflow_yaml_command, get_credentials_status, get_deployment_history,
+    get_diagnostic_log_path, get_github_app_config_command, get_github_auth_method_command,
     get_github_status, get_github_workflow_run_jobs, get_project, get_project_containers,
     get_project_logs, get_provider_credentials_status, get_runner_registration_token,
     get_runner_status, get_ssh_status, get_vps_metrics, get_workspace, get_workspace_file_path,
     install_self_hosted_runner, link_github_app_command, list_github_environments,
     list_github_repos, list_github_secrets, list_github_variables, list_github_workflow_runs,
     list_github_workflows, list_projects, list_supported_providers, list_vms,
-    parse_github_repo_url_command, poll_github_device_token, preview_list_vms,
-    register_github_app_command, restart_project, rotate_runner_registration, save_credentials,
-    save_github_pat_command, save_provider_credentials, save_ssh_credentials_command,
-    save_workspace_command, start_github_device_flow, start_project, stop_project,
-    sync_env_profile_to_github_secrets, test_connection, test_github_connection,
-    test_ssh_connection, uninstall_self_hosted_runner, update_project, upsert_github_secret,
-    upsert_github_variable,
+    open_diagnostic_log_folder, parse_github_repo_url_command, poll_github_device_token,
+    preview_list_vms, read_diagnostic_log_tail, register_github_app_command, restart_project,
+    rotate_runner_registration, save_credentials, save_github_pat_command,
+    save_provider_credentials, save_ssh_credentials_command, save_workspace_command,
+    start_github_device_flow, start_project, stop_project, sync_env_profile_to_github_secrets,
+    test_connection, test_github_connection, test_ssh_connection, uninstall_self_hosted_runner,
+    update_project, upsert_github_secret, upsert_github_variable,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -101,6 +103,11 @@ pub fn run() {
             get_workspace,
             save_workspace_command,
             get_workspace_file_path,
+            append_diagnostic_log,
+            get_diagnostic_log_path,
+            read_diagnostic_log_tail,
+            export_diagnostics_report,
+            open_diagnostic_log_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
