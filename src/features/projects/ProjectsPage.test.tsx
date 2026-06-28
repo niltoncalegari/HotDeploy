@@ -100,6 +100,8 @@ describe("ProjectsPage", () => {
 
     expect(await screen.findByText("mflow-staging")).toBeInTheDocument();
     expect(screen.getByText(/production · vm 1658621/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /vps & containers/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /github ci/i })).toBeInTheDocument();
   });
 
   it("prompts for VPS setup when no active profile exists", async () => {

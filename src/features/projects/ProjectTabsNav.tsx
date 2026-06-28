@@ -1,33 +1,29 @@
-import { NavLink } from "react-router-dom";
+import { GitBranch, LayoutDashboard } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
-import { cn } from "@/lib/utils";
+import {
+  SectionTabLink,
+  SectionTabsNav,
+} from "@/components/layout/section-tabs";
 
 interface ProjectTabsNavProps {
   projectName: string;
 }
 
 export function ProjectTabsNav({ projectName }: ProjectTabsNavProps) {
+  const location = useLocation();
   const encoded = encodeURIComponent(projectName);
   const base = `/projects/${encoded}`;
-  const tabClass = ({ isActive }: { isActive: boolean }) =>
-    cn(
-      "inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-      isActive
-        ? "bg-background text-foreground shadow-sm"
-        : "text-muted-foreground hover:text-foreground",
-    );
+  const onCiTab = location.pathname.endsWith("/ci");
 
   return (
-    <nav
-      className="bg-muted inline-flex w-fit items-center gap-1 rounded-lg p-1"
-      aria-label="Project sections"
-    >
-      <NavLink to={base} end className={tabClass}>
+    <SectionTabsNav aria-label="Project sections">
+      <SectionTabLink to={base} icon={LayoutDashboard} active={!onCiTab}>
         Overview
-      </NavLink>
-      <NavLink to={`${base}/ci`} className={tabClass}>
+      </SectionTabLink>
+      <SectionTabLink to={`${base}/ci`} icon={GitBranch} active={onCiTab}>
         CI / Actions
-      </NavLink>
-    </nav>
+      </SectionTabLink>
+    </SectionTabsNav>
   );
 }

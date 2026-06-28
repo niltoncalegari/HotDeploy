@@ -233,11 +233,13 @@ export function ProjectCiPage() {
           <ProjectTabsNav projectName={decodedName} />
           <EmptyState
             title="No repository linked"
-            description="Link a GitHub repository to this deploy project to view CI runs."
+            description={`Link a GitHub repository to the deploy project for "${decodedName}" in Settings to view CI runs.`}
             action={
               <EmptyStateButton asChild>
-                <Link to={`/projects/${encodeURIComponent(decodedName)}`}>
-                  Go to Overview
+                <Link
+                  to={`/settings?tab=deploy&dockerProject=${encodeURIComponent(decodedName)}`}
+                >
+                  Link repository in Settings
                 </Link>
               </EmptyStateButton>
             }
@@ -259,7 +261,7 @@ export function ProjectCiPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link to="/">
+            <Link to="/?tab=github">
               <ArrowLeft className="size-4" />
               Back
             </Link>

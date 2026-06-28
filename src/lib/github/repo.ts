@@ -36,3 +36,18 @@ export function filterDeployProjectsForProfile<T extends { connectionProfileId: 
   }
   return projects.filter((project) => project.connectionProfileId === profileId);
 }
+
+export function resolveGithubLinkFromDeployProject(project: {
+  githubLink?: GitHubLink;
+  deploySource: { type: string; repositoryUrl?: string };
+}): GitHubLink | null {
+  if (project.githubLink) {
+    return project.githubLink;
+  }
+
+  if (project.deploySource.type === "github" && project.deploySource.repositoryUrl) {
+    return parseGithubRepoFromUrl(project.deploySource.repositoryUrl);
+  }
+
+  return null;
+}

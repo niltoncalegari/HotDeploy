@@ -41,5 +41,8 @@ describe("ProjectCiPage", () => {
     renderWithProviders(<ProjectCiPage />);
     expect(screen.getByText(/no repository linked/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ci \/ actions/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /link repository in settings/i }),
+    ).toHaveAttribute("href", "/settings?tab=deploy&dockerProject=my-app");
   });
 });

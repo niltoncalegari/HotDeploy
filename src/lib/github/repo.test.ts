@@ -6,6 +6,7 @@ import {
   githubRepoLabel,
   githubRepoUrl,
   parseGithubRepoFromUrl,
+  resolveGithubLinkFromDeployProject,
 } from "@/lib/github/repo";
 
 describe("parseGithubRepoFromUrl", () => {
@@ -46,5 +47,35 @@ describe("filterDeployProjectsForProfile", () => {
       { id: "2", connectionProfileId: "b" },
     ];
     expect(filterDeployProjectsForProfile(projects, "a")).toHaveLength(1);
+  });
+});
+
+describe("resolveGithubLinkFromDeployProject", () => {
+  it("prefers explicit githubLink", () => {
+    expect(
+      resolveGithubLinkFromDeployProject({
+        githubLink: { owner: "acme", repo: "api" },
+        deploySource: { type: "github", repositoryUrl: "https://github.com/other/repo" },
+      }),
+    ).toEqual({ owner: "acme", repo: "api" });
+  });
+
+  it("derives link from github deploy source URL", () => {
+    expect(
+      resolveGithubLinkFromDeployProject({
+        deploySource: {
+          type: "github",
+          repositoryUrl: "https://github.com/acme/widget",
+        },
+      }),
+    ).toEqual({ owner: "acme", repo: "widget" });
+  });
+
+  it("returns null for local deploy sources", () => {
+    expect(
+      resolveGithubLinkFromDeployProject({
+        deploySource: { type: "local" },
+      }),
+    ).toBeNull();
   });
 });
