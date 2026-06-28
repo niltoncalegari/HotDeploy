@@ -2,6 +2,11 @@ import { HelpCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface FieldLabelProps {
@@ -31,14 +36,18 @@ export function FieldLabel({
         {required ? <span className="sr-only">(required)</span> : null}
       </Label>
       {help ? (
-        <span
-          className="text-muted-foreground inline-flex cursor-help"
-          title={help}
-          aria-label={help}
-          role="img"
-        >
-          <HelpCircle className="size-3.5 shrink-0" aria-hidden="true" />
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground inline-flex shrink-0 cursor-help rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={help}
+            >
+              <HelpCircle className="size-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{help}</TooltipContent>
+        </Tooltip>
       ) : null}
     </div>
   );

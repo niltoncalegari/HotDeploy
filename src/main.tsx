@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { App } from "@/App";
 import { AppBootstrap } from "@/components/AppBootstrap";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/query-client";
 import "@/index.css";
 
@@ -14,12 +15,14 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AppBootstrap>
-          <BrowserRouter>
-            <App />
-            <Toaster richColors position="top-right" />
-          </BrowserRouter>
-        </AppBootstrap>
+        <TooltipProvider>
+          <AppBootstrap>
+            <BrowserRouter>
+              <App />
+              <Toaster richColors position="top-right" />
+            </BrowserRouter>
+          </AppBootstrap>
+        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
