@@ -21,6 +21,15 @@ export function compareSemverDesc(left: string, right: string): number {
 /** User-facing release notes. Prefer newest-first in source; always sorted at read time. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
   {
+    version: "0.9.1",
+    fixes: [
+      "GitHub Device Flow sends required User-Agent header (fixes 403 on connect)",
+      "Link existing GitHub App by Client ID; clearer Device Flow setup hints",
+      "Reload workspace and credentials from disk on every app start",
+      "Persist GitHub App registration in workspace.json alongside github-app.json",
+    ],
+  },
+  {
     version: "0.9.0",
     features: [
       "CI / Actions tab on linked projects — workflows, runs, jobs, and steps",

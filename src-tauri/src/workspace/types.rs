@@ -67,6 +67,14 @@ pub struct GitHubLink {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct GitHubAppRegistration {
+    pub client_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkspaceConfig {
     pub version: u32,
     pub preferences: WorkspacePreferences,
@@ -78,6 +86,8 @@ pub struct WorkspaceConfig {
     pub deploy_projects: Vec<DeployProjectConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub onboarding_completed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_app: Option<GitHubAppRegistration>,
 }
 
 impl Default for WorkspaceConfig {
@@ -91,6 +101,7 @@ impl Default for WorkspaceConfig {
             active_connection_profile_id: None,
             deploy_projects: Vec::new(),
             onboarding_completed: None,
+            github_app: None,
         }
     }
 }

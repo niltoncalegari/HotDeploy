@@ -8,10 +8,12 @@ use serde::Deserialize;
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 
-use super::app_config::{github_app_configured, save_github_app_client_id};
+use super::app::GITHUB_USER_AGENT;
+use super::app_config::github_app_configured;
 use super::error::GitHubError;
 use super::oauth::device_flow_works;
 use super::types::{GitHubAppConfig, GitHubAppRegisterResult};
+use crate::workspace::persist_github_app_registration;
 
 const CALLBACK_PORT: u16 = 19736;
 const START_PATH: &str = "/github-app/start";
@@ -214,6 +216,7 @@ async fn convert_manifest(code: &str) -> Result<ManifestConversionResponse, GitH
             "https://api.github.com/app-manifests/{code}/conversions"
         ))
         .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", GITHUB_USER_AGENT)
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
@@ -233,6 +236,10 @@ async fn convert_manifest(code: &str) -> Result<ManifestConversionResponse, GitH
 
 pub async fn get_github_app_config(app: &AppHandle) -> Result<GitHubAppConfig, GitHubError> {
     let configured = github_app_configured(app);
+    let slug = super::app_config::load_github_app_registration(app).and_then(|(_, slug)| slug);
+    let settings_url = slug
+        .as_deref()
+        .map(|app_slug| format!("https://github.com/settings/apps/{app_slug}"));
     let device_flow_ready = if configured {
         device_flow_works(&super::app_config::resolve_github_app_client_id(app)).await
     } else {
@@ -241,6 +248,38 @@ pub async fn get_github_app_config(app: &AppHandle) -> Result<GitHubAppConfig, G
 
     Ok(GitHubAppConfig {
         configured,
+        device_flow_ready,
+        slug,
+        settings_url,
+    })
+}
+
+pub async fn link_github_app(
+    app: &AppHandle,
+    client_id: &str,
+    slug: Option<&str>,
+) -> Result<GitHubAppRegisterResult, GitHubError> {
+    let client_id = client_id.trim();
+    if client_id.is_empty() {
+        return Err(GitHubError::Request(
+            "GitHub App Client ID is required.".into(),
+        ));
+    }
+
+    persist_github_app_registration(app, client_id, slug)
+        .map_err(|error| GitHubError::Request(error.to_string()))?;
+    let device_flow_ready = device_flow_works(client_id).await;
+
+    if !device_flow_ready {
+        if let Some(app_slug) = slug {
+            let settings_url = format!("https://github.com/settings/apps/{app_slug}");
+            let _ = app.opener().open_url(settings_url, None::<&str>);
+        }
+    }
+
+    Ok(GitHubAppRegisterResult {
+        client_id: client_id.to_string(),
+        slug: slug.map(str::to_string),
         device_flow_ready,
     })
 }
@@ -262,7 +301,8 @@ pub async fn register_github_app(app: &AppHandle) -> Result<GitHubAppRegisterRes
         .map_err(|error| GitHubError::Request(error.to_string()))??;
 
     let payload = convert_manifest(&code).await?;
-    save_github_app_client_id(app, &payload.client_id, payload.slug.as_deref())?;
+    persist_github_app_registration(app, &payload.client_id, payload.slug.as_deref())
+        .map_err(|error| GitHubError::Request(error.to_string()))?;
 
     let device_flow_ready = device_flow_works(&payload.client_id).await;
     if !device_flow_ready {

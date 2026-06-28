@@ -24,6 +24,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     queryKey: ["workspace"],
     queryFn: getWorkspace,
     placeholderData: defaultWorkspaceConfig,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const saveMutation = useMutation({

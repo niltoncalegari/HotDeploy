@@ -39,7 +39,7 @@ pub fn resolve_github_app_client_id(app: &AppHandle) -> String {
         .unwrap_or_else(|| GITHUB_APP_CLIENT_ID.to_string())
 }
 
-pub fn load_github_app_client_id(app: &AppHandle) -> Option<String> {
+fn load_github_app_file(app: &AppHandle) -> Option<GitHubAppFile> {
     let path = github_app_file_path(app).ok()?;
     if !path.exists() {
         return None;
@@ -50,8 +50,17 @@ pub fn load_github_app_client_id(app: &AppHandle) -> Option<String> {
     if file.client_id.is_empty() {
         None
     } else {
-        Some(file.client_id)
+        Some(file)
     }
+}
+
+pub fn load_github_app_client_id(app: &AppHandle) -> Option<String> {
+    load_github_app_file(app).map(|file| file.client_id)
+}
+
+pub(crate) fn load_github_app_registration(app: &AppHandle) -> Option<(String, Option<String>)> {
+    let file = load_github_app_file(app)?;
+    Some((file.client_id, file.slug))
 }
 
 pub fn save_github_app_client_id(

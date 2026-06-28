@@ -15,7 +15,8 @@ export function useWorkspace() {
   return useQuery({
     queryKey: ["workspace"],
     queryFn: getWorkspace,
-    initialData: defaultWorkspaceConfig,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

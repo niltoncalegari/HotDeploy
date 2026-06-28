@@ -1,6 +1,6 @@
 [package]
 name = "hotdeploy"
-version = "0.9.0"
+version = "0.9.1"
 description = "HotDeploy — cross-platform Docker deployment control panel"
 authors = ["HotDeploy Contributors"]
 edition = "2021"

@@ -22,6 +22,11 @@ export const githubLinkSchema = z.object({
   defaultBranch: z.string().optional(),
 });
 
+export const githubAppRegistrationSchema = z.object({
+  clientId: z.string().min(1),
+  slug: z.string().optional(),
+});
+
 export const deploySourceSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("local"),
@@ -52,6 +57,7 @@ export const workspaceConfigSchema = z.object({
   activeConnectionProfileId: z.string().optional(),
   deployProjects: z.array(deployProjectConfigSchema),
   onboardingCompleted: z.boolean().optional(),
+  githubApp: githubAppRegistrationSchema.optional(),
 });
 
 export type ProviderId = z.infer<typeof providerIdSchema>;
@@ -60,6 +66,7 @@ export type WorkspacePreferences = z.infer<typeof workspacePreferencesSchema>;
 export type ConnectionProfile = z.infer<typeof connectionProfileSchema>;
 export type DeploySource = z.infer<typeof deploySourceSchema>;
 export type GitHubLink = z.infer<typeof githubLinkSchema>;
+export type GitHubAppRegistration = z.infer<typeof githubAppRegistrationSchema>;
 export type DeployProjectConfig = z.infer<typeof deployProjectConfigSchema>;
 export type WorkspaceConfig = z.infer<typeof workspaceConfigSchema>;
 

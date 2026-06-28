@@ -20,7 +20,9 @@ import {
   getGitHubAppConfig,
   getGitHubAuthMethod,
   getGitHubStatus,
+  isDeviceFlowDisabledError,
   isGitHubAppMisconfiguredError,
+  linkGitHubApp,
   parseGitHubError,
   pollGitHubDeviceToken,
   registerGitHubApp,
@@ -30,7 +32,13 @@ import {
 } from "@/lib/github/client";
 import { cn } from "@/lib/utils";
 
-function GitHubAppSetupHint({ emphasized = false }: { emphasized?: boolean }) {
+function GitHubAppSetupHint({
+  emphasized = false,
+  settingsUrl,
+}: {
+  emphasized?: boolean;
+  settingsUrl?: string;
+}) {
   return (
     <div
       className={cn(
@@ -46,14 +54,48 @@ function GitHubAppSetupHint({ emphasized = false }: { emphasized?: boolean }) {
         aria-hidden
       />
       <span className="text-muted-foreground text-xs leading-relaxed">
-        <strong className="text-foreground font-medium">First-time setup:</strong>{" "}
-        click <strong className="text-foreground font-medium">Register GitHub App</strong>{" "}
-        below, confirm creation in your browser, turn on{" "}
-        <strong className="text-foreground font-medium">Enable Device Flow</strong>{" "}
-        and grant{" "}
-        <strong className="text-foreground font-medium">Actions variables</strong>{" "}
-        under Repository permissions, then use{" "}
-        <strong className="text-foreground font-medium">Connect with GitHub App</strong>.
+        {emphasized ? (
+          <>
+            <strong className="text-foreground font-medium">
+              Device Flow is off on your GitHub App.
+            </strong>{" "}
+            {settingsUrl ? (
+              <a
+                href={settingsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline"
+              >
+                Open your existing app on GitHub
+              </a>
+            ) : (
+              <a
+                href="https://github.com/settings/apps"
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline"
+              >
+                Open your existing app on GitHub
+              </a>
+            )}
+            , enable{" "}
+            <strong className="text-foreground font-medium">Enable Device Flow</strong>
+            , save, then click Connect again. Do not register a duplicate app.
+          </>
+        ) : (
+          <>
+            <strong className="text-foreground font-medium">First-time setup:</strong>{" "}
+            click <strong className="text-foreground font-medium">Register GitHub App</strong>{" "}
+            below, confirm creation in your browser, turn on{" "}
+            <strong className="text-foreground font-medium">Enable Device Flow</strong>{" "}
+            and grant{" "}
+            <strong className="text-foreground font-medium">Actions variables</strong>{" "}
+            under Repository permissions, then use{" "}
+            <strong className="text-foreground font-medium">Connect with GitHub App</strong>.
+            Already registered? Use <strong className="text-foreground font-medium">Link existing app</strong>{" "}
+            with the Client ID from GitHub.
+          </>
+        )}
       </span>
     </div>
   );
@@ -67,6 +109,8 @@ export function GitHubCredentialsCard() {
   const [userCode, setUserCode] = useState<string | null>(null);
   const [verificationUri, setVerificationUri] = useState<string | null>(null);
   const [pollIntervalMs, setPollIntervalMs] = useState(5000);
+  const [linkClientId, setLinkClientId] = useState("");
+  const [linkSlug, setLinkSlug] = useState("");
 
   const { data: status, isLoading } = useQuery({
     queryKey: ["github-status"],
@@ -126,6 +170,23 @@ export function GitHubCredentialsCard() {
       }
       toast.message(
         "GitHub App registered. Enable Device Flow in the browser tab, then connect.",
+      );
+    },
+    onError: (error) => toast.error(parseGitHubError(error)),
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: () => linkGitHubApp(linkClientId, linkSlug || undefined),
+    onSuccess: async (result) => {
+      setLinkClientId("");
+      setLinkSlug("");
+      await queryClient.invalidateQueries({ queryKey: ["github-app-config"] });
+      if (result.deviceFlowReady) {
+        toast.success("Existing GitHub App linked. You can connect now.");
+        return;
+      }
+      toast.message(
+        "App linked. Enable Device Flow in GitHub App settings, then connect.",
       );
     },
     onError: (error) => toast.error(parseGitHubError(error)),
@@ -197,7 +258,12 @@ export function GitHubCredentialsCard() {
     return () => window.clearInterval(timer);
   }, [deviceCode, pollIntervalMs, queryClient]);
 
-  const registrationBusy = registerMutation.isPending;
+  const registrationBusy = registerMutation.isPending || linkMutation.isPending;
+  const deviceFlowBlocked =
+    appConfig?.configured === true && appConfig.deviceFlowReady === false;
+  const showDeviceFlowHint =
+    deviceFlowBlocked ||
+    (deviceFlowMutation.isError && isDeviceFlowDisabledError(deviceFlowMutation.error));
 
   return (
     <Card>
@@ -239,10 +305,8 @@ export function GitHubCredentialsCard() {
         <div className="space-y-2 rounded-md border p-3">
           <p className="text-sm font-medium">GitHub App (device flow)</p>
           <GitHubAppSetupHint
-            emphasized={
-              deviceFlowMutation.isError &&
-              isGitHubAppMisconfiguredError(deviceFlowMutation.error)
-            }
+            emphasized={showDeviceFlowHint}
+            settingsUrl={appConfig?.settingsUrl}
           />
           {userCode ? (
             <p className="text-muted-foreground text-sm">
@@ -287,7 +351,66 @@ export function GitHubCredentialsCard() {
               ) : null}
               Connect with GitHub App
             </Button>
+            {appConfig?.settingsUrl ? (
+              <Button asChild type="button" variant="ghost" size="sm">
+                <a href={appConfig.settingsUrl} target="_blank" rel="noreferrer">
+                  Open App settings
+                </a>
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={!appConfig?.configured}
+              onClick={() => {
+                void queryClient.invalidateQueries({ queryKey: ["github-app-config"] });
+              }}
+            >
+              Refresh app status
+            </Button>
           </div>
+        </div>
+
+        <div className="space-y-2 rounded-md border p-3">
+          <p className="text-sm font-medium">Link existing app</p>
+          <p className="text-muted-foreground text-xs">
+            Already registered HotDeploy on GitHub? Paste the Client ID from{" "}
+            <strong>GitHub → Settings → Developer settings → GitHub Apps → your app → About</strong>.
+            Optional slug helps open settings (e.g. <code className="text-xs">hotdeploy-desktop</code>).
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="github-app-client-id">Client ID</Label>
+              <Input
+                id="github-app-client-id"
+                value={linkClientId}
+                onChange={(event) => setLinkClientId(event.target.value)}
+                placeholder="Iv1.…"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="github-app-slug">App slug (optional)</Label>
+              <Input
+                id="github-app-slug"
+                value={linkSlug}
+                onChange={(event) => setLinkSlug(event.target.value)}
+                placeholder="hotdeploy-desktop"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={registrationBusy || !linkClientId.trim()}
+            onClick={() => linkMutation.mutate()}
+          >
+            {linkMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Link existing app
+          </Button>
         </div>
 
         <div className="space-y-2">
