@@ -40,6 +40,10 @@ _Avoid_: git remote, submodule
 A generated GitHub Actions YAML committed to `.github/workflows/` for build/test/deploy.
 _Avoid_: pipeline file, Jenkinsfile
 
+**Workflow Run**:
+A single GitHub Actions execution (jobs and steps) for a repository. Distinct from a HotDeploy **Deployment** to the VPS.
+_Avoid_: deploy, release (when meaning VPS deployment)
+
 **Self-Hosted Runner**:
 A GitHub Actions runner process on the VPS, installed via SSH whitelist commands.
 _Avoid_: build agent, CI server

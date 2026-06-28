@@ -81,15 +81,28 @@ export function parseGitHubError(error: unknown): string {
   if (typeof error === "string") {
     try {
       const parsed = JSON.parse(error) as { message?: string };
-      return parsed.message ?? error;
+      const message = parsed.message ?? error;
+      return friendlyGitHubMessage(message);
     } catch {
-      return error;
+      return friendlyGitHubMessage(error);
     }
   }
   if (error instanceof Error) {
-    return error.message;
+    return friendlyGitHubMessage(error.message);
   }
   return "Unknown GitHub error";
+}
+
+function friendlyGitHubMessage(message: string): string {
+  if (message.includes("device_flow_disabled")) {
+    return "Device Flow is disabled on your GitHub App. Open your app settings on GitHub, enable Enable Device Flow, save, then try Connect again. You do not need to register a new app.";
+  }
+  return message;
+}
+
+export function isDeviceFlowDisabledError(error: unknown): boolean {
+  const message = parseGitHubError(error).toLowerCase();
+  return message.includes("device flow is disabled");
 }
 
 export function isGitHubAppMisconfiguredError(error: unknown): boolean {
@@ -291,6 +304,8 @@ export interface GitHubAuthMethod {
 export interface GitHubAppConfig {
   configured: boolean;
   deviceFlowReady: boolean;
+  slug?: string;
+  settingsUrl?: string;
 }
 
 export interface GitHubAppRegisterResult {
@@ -378,4 +393,109 @@ export async function getGitHubAppConfig(): Promise<GitHubAppConfig> {
 
 export async function registerGitHubApp(): Promise<GitHubAppRegisterResult> {
   return invoke<GitHubAppRegisterResult>("register_github_app_command");
+}
+
+export async function linkGitHubApp(
+  clientId: string,
+  slug?: string,
+): Promise<GitHubAppRegisterResult> {
+  return invoke<GitHubAppRegisterResult>("link_github_app_command", {
+    clientId: clientId.trim(),
+    slug: slug?.trim() || null,
+  });
+}
+
+export interface GitHubWorkflow {
+  id: number;
+  name: string;
+  path: string;
+  state: string;
+  htmlUrl: string;
+}
+
+export interface WorkflowRunDetail {
+  id: number;
+  name: string;
+  status: string;
+  conclusion?: string;
+  headBranch: string;
+  event: string;
+  createdAt: string;
+  updatedAt: string;
+  htmlUrl: string;
+  workflowId: number;
+}
+
+export interface WorkflowStep {
+  name: string;
+  status: string;
+  conclusion?: string;
+  number: number;
+}
+
+export interface WorkflowJob {
+  id: number;
+  name: string;
+  status: string;
+  conclusion?: string;
+  startedAt?: string;
+  completedAt?: string;
+  steps: WorkflowStep[];
+}
+
+export interface WorkflowRunListFilters {
+  workflowId?: number;
+  branch?: string;
+  status?: string;
+  perPage?: number;
+}
+
+export async function listGitHubWorkflows(
+  owner: string,
+  repo: string,
+): Promise<GitHubWorkflow[]> {
+  return invoke<GitHubWorkflow[]>("list_github_workflows", { owner, repo });
+}
+
+export async function listGitHubWorkflowRuns(
+  owner: string,
+  repo: string,
+  filters: WorkflowRunListFilters = {},
+): Promise<WorkflowRunDetail[]> {
+  return invoke<WorkflowRunDetail[]>("list_github_workflow_runs", {
+    owner,
+    repo,
+    workflowId: filters.workflowId ?? null,
+    branch: filters.branch ?? null,
+    status: filters.status ?? null,
+    perPage: filters.perPage ?? null,
+  });
+}
+
+export async function getGitHubWorkflowRunJobs(
+  owner: string,
+  repo: string,
+  runId: number,
+): Promise<WorkflowJob[]> {
+  return invoke<WorkflowJob[]>("get_github_workflow_run_jobs", {
+    owner,
+    repo,
+    runId,
+  });
+}
+
+export async function dispatchGitHubWorkflow(
+  owner: string,
+  repo: string,
+  workflowId: number,
+  reference: string,
+  inputs?: Record<string, string>,
+): Promise<void> {
+  await invoke("dispatch_github_workflow", {
+    owner,
+    repo,
+    workflowId,
+    reference,
+    inputs: inputs ?? null,
+  });
 }

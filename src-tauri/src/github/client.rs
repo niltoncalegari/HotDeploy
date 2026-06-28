@@ -3,12 +3,14 @@ use reqwest::header::{ACCEPT, USER_AGENT};
 use reqwest::{Client, Response};
 use serde::Deserialize;
 
+use super::app::GITHUB_USER_AGENT;
 use super::error::GitHubError;
 use super::runner::parse_github_repo_url;
 use super::secrets::encrypt_secret_value;
 use super::types::{
     AutoDeployCheckResult, CommitWorkflowResult, GitHubConnectionTest, GitHubEnvironment,
-    GitHubRepo, GitHubSecretMeta, GitHubVariable, RunnerRegistrationToken, WorkflowRunSummary,
+    GitHubRepo, GitHubSecretMeta, GitHubVariable, GitHubWorkflow, RunnerRegistrationToken,
+    WorkflowJob, WorkflowRunDetail, WorkflowRunFilters, WorkflowRunSummary, WorkflowStep,
 };
 
 pub const GITHUB_API_BASE: &str = "https://api.github.com";
@@ -315,6 +317,111 @@ impl GitHubClient {
             }))
     }
 
+    pub async fn list_workflows(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Vec<GitHubWorkflow>, GitHubError> {
+        let path = format!("/repos/{owner}/{repo}/actions/workflows");
+        let response = self.get(&path).await?;
+        let payload: ApiWorkflowsList = response.json().await.map_err(map_json_error)?;
+
+        Ok(payload
+            .workflows
+            .into_iter()
+            .map(|workflow| GitHubWorkflow {
+                id: workflow.id,
+                name: workflow.name,
+                path: workflow.path,
+                state: workflow.state,
+                html_url: workflow.html_url,
+            })
+            .collect())
+    }
+
+    pub async fn list_workflow_runs(
+        &self,
+        owner: &str,
+        repo: &str,
+        filters: &WorkflowRunFilters,
+    ) -> Result<Vec<WorkflowRunDetail>, GitHubError> {
+        let per_page = filters.per_page.unwrap_or(30);
+        let mut path = format!("/repos/{owner}/{repo}/actions/runs?per_page={per_page}");
+        if let Some(workflow_id) = filters.workflow_id {
+            path.push_str(&format!("&workflow_id={workflow_id}"));
+        }
+        if let Some(branch) = &filters.branch {
+            path.push_str(&format!("&branch={branch}"));
+        }
+        if let Some(status) = &filters.status {
+            path.push_str(&format!("&status={status}"));
+        }
+
+        let response = self.get(&path).await?;
+        let payload: ApiWorkflowRunsList = response.json().await.map_err(map_json_error)?;
+
+        Ok(payload
+            .workflow_runs
+            .into_iter()
+            .map(map_workflow_run_detail)
+            .collect())
+    }
+
+    pub async fn get_workflow_run_jobs(
+        &self,
+        owner: &str,
+        repo: &str,
+        run_id: u64,
+    ) -> Result<Vec<WorkflowJob>, GitHubError> {
+        let path = format!("/repos/{owner}/{repo}/actions/runs/{run_id}/jobs");
+        let response = self.get(&path).await?;
+        let payload: ApiWorkflowJobsList = response.json().await.map_err(map_json_error)?;
+
+        Ok(payload
+            .jobs
+            .into_iter()
+            .map(|job| WorkflowJob {
+                id: job.id,
+                name: job.name,
+                status: job.status,
+                conclusion: job.conclusion,
+                started_at: job.started_at,
+                completed_at: job.completed_at,
+                steps: job
+                    .steps
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|step| WorkflowStep {
+                        name: step.name,
+                        status: step.status,
+                        conclusion: step.conclusion,
+                        number: step.number,
+                    })
+                    .collect(),
+            })
+            .collect())
+    }
+
+    pub async fn dispatch_workflow(
+        &self,
+        owner: &str,
+        repo: &str,
+        workflow_id: u64,
+        reference: &str,
+        inputs: Option<std::collections::HashMap<String, String>>,
+    ) -> Result<(), GitHubError> {
+        if reference.trim().is_empty() {
+            return Err(GitHubError::Request(
+                "Workflow dispatch requires a non-empty ref (branch or tag).".into(),
+            ));
+        }
+
+        let path = format!("/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches");
+        let body = build_dispatch_body(reference, inputs.as_ref());
+        self.post(&path, &body).await?;
+        Ok(())
+    }
+
     pub fn evaluate_auto_deploy(
         run: Option<&WorkflowRunSummary>,
         last_deployed_run_id: Option<u64>,
@@ -344,7 +451,7 @@ impl GitHubClient {
             .http
             .get(format!("{GITHUB_API_BASE}{path}"))
             .bearer_auth(&self.pat)
-            .header(USER_AGENT, "HotDeploy")
+            .header(USER_AGENT, GITHUB_USER_AGENT)
             .header(ACCEPT, "application/vnd.github+json")
             .send()
             .await
@@ -367,7 +474,7 @@ impl GitHubClient {
             .http
             .get(format!("{GITHUB_API_BASE}{path}"))
             .bearer_auth(&self.pat)
-            .header(USER_AGENT, "HotDeploy")
+            .header(USER_AGENT, GITHUB_USER_AGENT)
             .header(ACCEPT, "application/vnd.github+json")
             .send()
             .await
@@ -385,7 +492,7 @@ impl GitHubClient {
             .http
             .post(format!("{GITHUB_API_BASE}{path}"))
             .bearer_auth(&self.pat)
-            .header(USER_AGENT, "HotDeploy")
+            .header(USER_AGENT, GITHUB_USER_AGENT)
             .header(ACCEPT, "application/vnd.github+json")
             .json(body)
             .send()
@@ -404,7 +511,7 @@ impl GitHubClient {
             .http
             .put(format!("{GITHUB_API_BASE}{path}"))
             .bearer_auth(&self.pat)
-            .header(USER_AGENT, "HotDeploy")
+            .header(USER_AGENT, GITHUB_USER_AGENT)
             .header(ACCEPT, "application/vnd.github+json")
             .json(body)
             .send()
@@ -423,7 +530,7 @@ impl GitHubClient {
             .http
             .patch(format!("{GITHUB_API_BASE}{path}"))
             .bearer_auth(&self.pat)
-            .header(USER_AGENT, "HotDeploy")
+            .header(USER_AGENT, GITHUB_USER_AGENT)
             .header(ACCEPT, "application/vnd.github+json")
             .json(body)
             .send()
@@ -442,7 +549,7 @@ impl GitHubClient {
             .http
             .delete(format!("{GITHUB_API_BASE}{path}"))
             .bearer_auth(&self.pat)
-            .header(USER_AGENT, "HotDeploy")
+            .header(USER_AGENT, GITHUB_USER_AGENT)
             .header(ACCEPT, "application/vnd.github+json")
             .send()
             .await
@@ -548,12 +655,83 @@ struct ApiWorkflowRunsList {
 }
 
 #[derive(Debug, Deserialize)]
+struct ApiWorkflowsList {
+    workflows: Vec<ApiWorkflow>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiWorkflow {
+    id: u64,
+    name: String,
+    path: String,
+    state: String,
+    html_url: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct ApiWorkflowRun {
     id: u64,
+    name: String,
     status: String,
     conclusion: Option<String>,
     head_branch: String,
+    event: String,
+    created_at: String,
+    updated_at: String,
     html_url: String,
+    workflow_id: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiWorkflowJobsList {
+    jobs: Vec<ApiWorkflowJob>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiWorkflowJob {
+    id: u64,
+    name: String,
+    status: String,
+    conclusion: Option<String>,
+    started_at: Option<String>,
+    completed_at: Option<String>,
+    steps: Option<Vec<ApiWorkflowStep>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiWorkflowStep {
+    name: String,
+    status: String,
+    conclusion: Option<String>,
+    number: u32,
+}
+
+fn map_workflow_run_detail(run: ApiWorkflowRun) -> WorkflowRunDetail {
+    WorkflowRunDetail {
+        id: run.id,
+        name: run.name,
+        status: run.status,
+        conclusion: run.conclusion,
+        head_branch: run.head_branch,
+        event: run.event,
+        created_at: run.created_at,
+        updated_at: run.updated_at,
+        html_url: run.html_url,
+        workflow_id: run.workflow_id,
+    }
+}
+
+pub fn build_dispatch_body(
+    reference: &str,
+    inputs: Option<&std::collections::HashMap<String, String>>,
+) -> serde_json::Value {
+    match inputs {
+        Some(values) if !values.is_empty() => serde_json::json!({
+            "ref": reference,
+            "inputs": values,
+        }),
+        _ => serde_json::json!({ "ref": reference }),
+    }
 }
 
 fn map_request_error(error: reqwest::Error) -> GitHubError {
@@ -575,7 +753,7 @@ fn map_json_error(error: reqwest::Error) -> GitHubError {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_repo_from_url, GitHubClient};
+    use super::{build_dispatch_body, map_workflow_run_detail, parse_repo_from_url, GitHubClient};
     use crate::github::types::WorkflowRunSummary;
 
     #[test]
@@ -596,5 +774,65 @@ mod tests {
         };
         let result = GitHubClient::evaluate_auto_deploy(Some(&run), Some(1));
         assert!(result.should_deploy);
+    }
+
+    #[test]
+    fn map_workflow_run_from_api_json() {
+        let json = r#"{
+            "id": 42,
+            "name": "CI",
+            "status": "completed",
+            "conclusion": "success",
+            "head_branch": "main",
+            "event": "push",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:05:00Z",
+            "html_url": "https://github.com/o/r/actions/runs/42",
+            "workflow_id": 7
+        }"#;
+        let run: super::ApiWorkflowRun = serde_json::from_str(json).expect("parse");
+        let detail = map_workflow_run_detail(run);
+        assert_eq!(detail.id, 42);
+        assert_eq!(detail.event, "push");
+        assert_eq!(detail.workflow_id, 7);
+    }
+
+    #[test]
+    fn map_workflow_jobs_from_api_json() {
+        let json = r#"{
+            "jobs": [{
+                "id": 1,
+                "name": "build",
+                "status": "completed",
+                "conclusion": "failure",
+                "started_at": "2024-01-01T00:00:00Z",
+                "completed_at": "2024-01-01T00:01:00Z",
+                "steps": [{
+                    "name": "Checkout",
+                    "status": "completed",
+                    "conclusion": "success",
+                    "number": 1
+                }]
+            }]
+        }"#;
+        let payload: super::ApiWorkflowJobsList = serde_json::from_str(json).expect("parse");
+        assert_eq!(payload.jobs.len(), 1);
+        assert_eq!(payload.jobs[0].steps.as_ref().expect("steps").len(), 1);
+    }
+
+    #[test]
+    fn dispatch_body_ref_only() {
+        let body = build_dispatch_body("main", None);
+        assert_eq!(body["ref"], "main");
+        assert!(body.get("inputs").is_none());
+    }
+
+    #[test]
+    fn dispatch_body_with_inputs() {
+        let mut inputs = std::collections::HashMap::new();
+        inputs.insert("env".into(), "staging".into());
+        let body = build_dispatch_body("develop", Some(&inputs));
+        assert_eq!(body["ref"], "develop");
+        assert_eq!(body["inputs"]["env"], "staging");
     }
 }

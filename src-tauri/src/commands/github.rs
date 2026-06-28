@@ -10,12 +10,13 @@ use crate::github::env_profile::parse_env_profile;
 use crate::github::gh_cli::read_gh_auth_token;
 use crate::github::oauth::DeviceFlowStart;
 use crate::github::oauth::{poll_device_token, start_device_flow};
-use crate::github::register::{get_github_app_config, register_github_app};
+use crate::github::register::{get_github_app_config, link_github_app, register_github_app};
 use crate::github::types::{
     AutoDeployCheckResult, CommitWorkflowResult, EnvProfileSyncResult, GitHubAppConfig,
     GitHubAppRegisterResult, GitHubAuthMethod, GitHubConnectionTest, GitHubEnvironment, GitHubRepo,
-    GitHubSecretMeta, GitHubStatus, GitHubVariable, RunnerInstallResult, RunnerRegistrationToken,
-    RunnerStatus, RunnerUninstallResult, WorkflowOptions,
+    GitHubSecretMeta, GitHubStatus, GitHubVariable, GitHubWorkflow, RunnerInstallResult,
+    RunnerRegistrationToken, RunnerStatus, RunnerUninstallResult, WorkflowJob, WorkflowOptions,
+    WorkflowRunDetail, WorkflowRunFilters,
 };
 use crate::github::workflow::generate_workflow_yaml;
 
@@ -343,6 +344,17 @@ pub async fn register_github_app_command(
 }
 
 #[tauri::command]
+pub async fn link_github_app_command(
+    app: AppHandle,
+    client_id: String,
+    slug: Option<String>,
+) -> Result<GitHubAppRegisterResult, String> {
+    link_github_app(&app, &client_id, slug.as_deref())
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
 pub async fn connect_github_from_gh_cli(app: AppHandle) -> Result<GitHubStatus, String> {
     let token = read_gh_auth_token().map_err(String::from)?;
     save_github_app_token(&app, &token).map_err(String::from)?;
@@ -392,4 +404,70 @@ pub fn get_github_auth_method_command(app: AppHandle) -> Result<GitHubAuthMethod
         .map_err(String::from)?
         .unwrap_or_else(|| "none".to_string());
     Ok(GitHubAuthMethod { method })
+}
+
+#[tauri::command]
+pub async fn list_github_workflows(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+) -> Result<Vec<GitHubWorkflow>, String> {
+    let client = github_client_from_app(&app)?;
+    client
+        .list_workflows(&owner, &repo)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn list_github_workflow_runs(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    workflow_id: Option<u64>,
+    branch: Option<String>,
+    status: Option<String>,
+    per_page: Option<u32>,
+) -> Result<Vec<WorkflowRunDetail>, String> {
+    let client = github_client_from_app(&app)?;
+    let filters = WorkflowRunFilters {
+        workflow_id,
+        branch,
+        status,
+        per_page,
+    };
+    client
+        .list_workflow_runs(&owner, &repo, &filters)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn get_github_workflow_run_jobs(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    run_id: u64,
+) -> Result<Vec<WorkflowJob>, String> {
+    let client = github_client_from_app(&app)?;
+    client
+        .get_workflow_run_jobs(&owner, &repo, run_id)
+        .await
+        .map_err(String::from)
+}
+
+#[tauri::command]
+pub async fn dispatch_github_workflow(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    workflow_id: u64,
+    reference: String,
+    inputs: Option<std::collections::HashMap<String, String>>,
+) -> Result<(), String> {
+    let client = github_client_from_app(&app)?;
+    client
+        .dispatch_workflow(&owner, &repo, workflow_id, &reference, inputs)
+        .await
+        .map_err(String::from)
 }

@@ -3,15 +3,15 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { OnboardingWizard } from "@/features/onboarding/OnboardingWizard";
 import { ProjectDetailPage } from "@/features/projects/ProjectDetailPage";
+import { ProjectCiPage } from "@/features/github/ProjectCiPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { useWorkspace } from "@/lib/workspace/hooks";
-import { defaultWorkspaceConfig } from "@/lib/workspace/schemas";
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
-  const { data: workspace = defaultWorkspaceConfig, isLoading } = useWorkspace();
+  const { data: workspace, isFetched } = useWorkspace();
 
-  if (isLoading) {
+  if (!isFetched || !workspace) {
     return null;
   }
 
@@ -35,6 +35,7 @@ export function App() {
       >
         <Route index element={<ProjectsPage />} />
         <Route path="projects/:projectName" element={<ProjectDetailPage />} />
+        <Route path="projects/:projectName/ci" element={<ProjectCiPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

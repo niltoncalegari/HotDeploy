@@ -9,17 +9,23 @@ import {
   deleteGitHubEnvironment,
   deleteGitHubSecret,
   deleteGitHubVariable,
+  dispatchGitHubWorkflow,
   generateWorkflowYaml,
   getGitHubAppConfig,
   getGitHubAuthMethod,
   getGitHubStatus,
+  getGitHubWorkflowRunJobs,
   getRunnerStatus,
   getSshStatus,
   installSelfHostedRunner,
+  isDeviceFlowDisabledError,
+  linkGitHubApp,
   listGitHubEnvironments,
   listGitHubRepos,
   listGitHubSecrets,
   listGitHubVariables,
+  listGitHubWorkflowRuns,
+  listGitHubWorkflows,
   parseGitHubError,
   parseGithubRepoUrl,
   pollGitHubDeviceToken,
@@ -59,6 +65,15 @@ describe("parseGitHubError", () => {
 
   it("handles unknown error values", () => {
     expect(parseGitHubError(42)).toBe("Unknown GitHub error");
+  });
+
+  it("maps device_flow_disabled to a friendly message", () => {
+    expect(
+      parseGitHubError(
+        '{"code":"request_error","message":"GitHub request failed: Device Flow is disabled on your GitHub App. Open your app settings on GitHub, enable Enable Device Flow, save, then try Connect again. You do not need to register a new app."}',
+      ),
+    ).toContain("Device Flow is disabled");
+    expect(isDeviceFlowDisabledError("device_flow_disabled")).toBe(true);
   });
 });
 
@@ -192,5 +207,84 @@ describe("GitHub invoke wrappers", () => {
     await getGitHubAuthMethod();
 
     expect(invoke).toHaveBeenCalledTimes(13);
+  });
+});
+
+// As a developer, I want CI invoke wrappers so that GitHub Actions stay in Rust.
+describe("GitHub CI invoke wrappers", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("lists workflows for a repository", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue([]);
+
+    await listGitHubWorkflows("owner", "repo");
+    expect(invoke).toHaveBeenCalledWith("list_github_workflows", {
+      owner: "owner",
+      repo: "repo",
+    });
+  });
+
+  it("lists workflow runs with optional filters", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue([]);
+
+    await listGitHubWorkflowRuns("owner", "repo", {
+      workflowId: 9,
+      branch: "main",
+      status: "completed",
+      perPage: 20,
+    });
+    expect(invoke).toHaveBeenCalledWith("list_github_workflow_runs", {
+      owner: "owner",
+      repo: "repo",
+      workflowId: 9,
+      branch: "main",
+      status: "completed",
+      perPage: 20,
+    });
+  });
+
+  it("loads jobs for a workflow run", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue([]);
+
+    await getGitHubWorkflowRunJobs("owner", "repo", 42);
+    expect(invoke).toHaveBeenCalledWith("get_github_workflow_run_jobs", {
+      owner: "owner",
+      repo: "repo",
+      runId: 42,
+    });
+  });
+
+  it("dispatches a workflow on a branch", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue(undefined);
+
+    await dispatchGitHubWorkflow("owner", "repo", 7, "main");
+    expect(invoke).toHaveBeenCalledWith("dispatch_github_workflow", {
+      owner: "owner",
+      repo: "repo",
+      workflowId: 7,
+      reference: "main",
+      inputs: null,
+    });
+  });
+
+  it("links an existing GitHub App by client id", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue({
+      clientId: "Iv1.test",
+      slug: "hotdeploy-desktop",
+      deviceFlowReady: false,
+    });
+
+    await linkGitHubApp("Iv1.test", "hotdeploy-desktop");
+    expect(invoke).toHaveBeenCalledWith("link_github_app_command", {
+      clientId: "Iv1.test",
+      slug: "hotdeploy-desktop",
+    });
   });
 });

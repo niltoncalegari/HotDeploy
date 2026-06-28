@@ -21,6 +21,14 @@ export function compareSemverDesc(left: string, right: string): number {
 /** User-facing release notes. Prefer newest-first in source; always sorted at read time. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
   {
+    version: "0.9.0",
+    features: [
+      "CI / Actions tab on linked projects — workflows, runs, jobs, and steps",
+      "Poll GitHub Actions while the CI tab is open (15–30s)",
+      "Run workflow_dispatch from the app with branch selection",
+    ],
+  },
+  {
     version: "0.8.5",
     fixes: [
       "Onboarding skip-setup checkbox persists to workspace immediately on toggle",

@@ -24,6 +24,7 @@ import { RunnerStatusCard } from "@/features/github/RunnerStatusCard";
 import { WorkflowGeneratorDialog } from "@/features/github/WorkflowGeneratorDialog";
 import { LifecycleActions } from "@/features/projects/LifecycleActions";
 import { LogsPanel } from "@/features/projects/LogsPanel";
+import { ProjectTabsNav } from "@/features/projects/ProjectTabsNav";
 import { githubRepoLabel, githubRepoUrl } from "@/lib/github/repo";
 import {
   deployProject,
@@ -193,6 +194,8 @@ export function ProjectDetailPage() {
       }
     >
       <div className="flex flex-col gap-4 p-6">
+        <ProjectTabsNav projectName={decodedName} />
+
         <div className="flex flex-wrap items-center gap-2">
           {project ? <Badge variant="secondary">{project.state}</Badge> : null}
           {githubLink ? (

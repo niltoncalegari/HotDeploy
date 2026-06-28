@@ -142,6 +142,10 @@ pub struct GitHubAuthMethod {
 pub struct GitHubAppConfig {
     pub configured: bool,
     pub device_flow_ready: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub settings_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,4 +155,63 @@ pub struct GitHubAppRegisterResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub slug: Option<String>,
     pub device_flow_ready: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubWorkflow {
+    pub id: u64,
+    pub name: String,
+    pub path: String,
+    pub state: String,
+    pub html_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowRunDetail {
+    pub id: u64,
+    pub name: String,
+    pub status: String,
+    pub conclusion: Option<String>,
+    pub head_branch: String,
+    pub event: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub html_url: String,
+    pub workflow_id: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowJob {
+    pub id: u64,
+    pub name: String,
+    pub status: String,
+    pub conclusion: Option<String>,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub steps: Vec<WorkflowStep>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowStep {
+    pub name: String,
+    pub status: String,
+    pub conclusion: Option<String>,
+    pub number: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowRunFilters {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub per_page: Option<u32>,
 }
