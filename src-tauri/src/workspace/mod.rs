@@ -78,7 +78,17 @@ pub fn save_workspace(
     config.version = WORKSPACE_VERSION;
 
     let contents = serde_json::to_string_pretty(&config)?;
-    fs::write(&path, contents).map_err(|error| WorkspaceError::Write(error.to_string()))
+    write_atomically(&path, &contents)
+}
+
+fn write_atomically(path: &PathBuf, contents: &str) -> Result<(), WorkspaceError> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| WorkspaceError::Write("workspace path has no parent".to_string()))?;
+    let temp_path = parent.join(format!(".{WORKSPACE_FILE}.tmp"));
+
+    fs::write(&temp_path, contents).map_err(|error| WorkspaceError::Write(error.to_string()))?;
+    fs::rename(&temp_path, path).map_err(|error| WorkspaceError::Write(error.to_string()))
 }
 
 pub fn persist_github_app_registration(
@@ -143,6 +153,42 @@ mod tests {
         let json = serde_json::to_string(&config).expect("serialize workspace");
         let parsed: WorkspaceConfig = serde_json::from_str(&json).expect("deserialize workspace");
         assert_eq!(config.github_app, parsed.github_app);
+    }
+
+    #[test]
+    fn deserializes_github_deploy_project_from_frontend_json() {
+        let json = r#"{
+            "version": 1,
+            "preferences": { "theme": "light" },
+            "connectionProfiles": [{
+                "id": "profile-1",
+                "label": "Default VPS",
+                "provider": "hostinger",
+                "virtualMachineId": 1658621
+            }],
+            "deployProjects": [{
+                "id": "project-1",
+                "name": "MFlow Staging",
+                "connectionProfileId": "profile-1",
+                "dockerProjectName": "mflow-staging",
+                "deploySource": {
+                    "type": "github",
+                    "repositoryUrl": "https://github.com/niltoncalegari/MFlow"
+                },
+                "githubLink": {
+                    "owner": "niltoncalegari",
+                    "repo": "MFlow",
+                    "defaultBranch": "main"
+                }
+            }]
+        }"#;
+
+        let parsed: WorkspaceConfig = serde_json::from_str(json).expect("deserialize workspace");
+        assert_eq!(parsed.deploy_projects.len(), 1);
+        assert!(matches!(
+            parsed.deploy_projects[0].deploy_source,
+            DeploySource::Github { .. }
+        ));
     }
 
     #[test]

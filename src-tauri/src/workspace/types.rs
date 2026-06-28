@@ -32,9 +32,11 @@ pub struct ConnectionProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type")]
 pub enum DeploySource {
+    #[serde(rename = "local", rename_all = "camelCase")]
     Local { compose_file_path: String },
+    #[serde(rename = "github", rename_all = "camelCase")]
     Github { repository_url: String },
 }
 
