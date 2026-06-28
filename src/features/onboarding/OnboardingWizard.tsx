@@ -25,6 +25,7 @@ import {
 } from "@/lib/github/client";
 import { saveWorkspace } from "@/lib/workspace/client";
 import { useWorkspace } from "@/lib/workspace/hooks";
+import { syncConnectionProfileFromVm } from "@/lib/workspace/sync-profile";
 import {
   defaultWorkspaceConfig,
   type WorkspaceConfig,
@@ -96,6 +97,22 @@ export function OnboardingWizard() {
       await saveCredentials(apiKey.trim(), parsedVm);
     },
     onSuccess: async () => {
+      const parsedVm = Number(vmId);
+      const currentWorkspace =
+        queryClient.getQueryData<WorkspaceConfig>(["workspace"]) ??
+        workspace ??
+        defaultWorkspaceConfig;
+
+      if (Number.isFinite(parsedVm) && parsedVm > 0) {
+        const nextWorkspace = syncConnectionProfileFromVm(
+          currentWorkspace,
+          parsedVm,
+          `VPS ${parsedVm}`,
+        );
+        await saveWorkspace(nextWorkspace);
+        queryClient.setQueryData(["workspace"], nextWorkspace);
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["credentials-status"] });
       toast.success("Provider credentials saved.");
       setStep(2);

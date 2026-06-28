@@ -9,6 +9,7 @@ import {
 } from "@/lib/github/client";
 import { getCredentialsStatus } from "@/lib/hostinger/client";
 import { getWorkspace } from "@/lib/workspace/client";
+import { useEnsureConnectionProfileSynced } from "@/lib/workspace/useEnsureConnectionProfileSynced";
 
 /**
  * Reloads persisted workspace and credential state from disk on every app start
@@ -16,6 +17,7 @@ import { getWorkspace } from "@/lib/workspace/client";
  */
 export function AppBootstrap({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  useEnsureConnectionProfileSynced();
 
   useEffect(() => {
     void Promise.all([

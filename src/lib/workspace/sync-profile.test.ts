@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { defaultWorkspaceConfig } from "@/lib/workspace/schemas";
 import {
+  ensureConnectionProfileFromCredentials,
   findProfileLabelForVm,
   resolveActiveProfile,
   syncConnectionProfileFromVm,
@@ -44,9 +45,36 @@ describe("syncConnectionProfileFromVm", () => {
   });
 });
 
+describe("ensureConnectionProfileFromCredentials", () => {
+  it("creates a profile when credentials exist but workspace has none", () => {
+    const next = ensureConnectionProfileFromCredentials(
+      defaultWorkspaceConfig,
+      1658621,
+    );
+
+    expect(next?.connectionProfiles).toHaveLength(1);
+    expect(next?.connectionProfiles[0]?.virtualMachineId).toBe(1658621);
+  });
+
+  it("returns null when profiles already exist", () => {
+    const workspace = syncConnectionProfileFromVm(defaultWorkspaceConfig, 1, "first");
+    expect(ensureConnectionProfileFromCredentials(workspace, 1658621)).toBeNull();
+  });
+});
+
 describe("resolveActiveProfile", () => {
   it("returns null when no profiles or fallback exist", () => {
     expect(resolveActiveProfile(defaultWorkspaceConfig)).toBeNull();
+  });
+
+  it("returns first profile when active id is missing", () => {
+    const workspace = syncConnectionProfileFromVm(defaultWorkspaceConfig, 1658621, "srv1");
+    const profile = resolveActiveProfile({
+      ...workspace,
+      activeConnectionProfileId: "missing-id",
+    });
+
+    expect(profile?.virtualMachineId).toBe(1658621);
   });
 
   it("falls back to keychain VM when profiles are missing", () => {

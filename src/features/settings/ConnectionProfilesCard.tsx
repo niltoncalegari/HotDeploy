@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Server, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getCredentialsStatus } from "@/lib/hostinger/client";
 import { saveWorkspace } from "@/lib/workspace/client";
 import {
   createConnectionProfile,
@@ -49,6 +50,11 @@ export function ConnectionProfilesCard({
   const [virtualMachineId, setVirtualMachineId] = useState("");
   const [provider, setProvider] = useState<ProviderId>("hostinger");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const { data: credentials } = useQuery({
+    queryKey: ["credentials-status"],
+    queryFn: getCredentialsStatus,
+  });
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
@@ -129,7 +135,9 @@ export function ConnectionProfilesCard({
       <CardContent className="space-y-6">
         {workspace.connectionProfiles.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No VPS targets configured yet. Add one below.
+            {credentials?.configured
+              ? `No saved VPS profile yet. HotDeploy will create one from VM ${credentials.virtualMachineId} automatically, or add one manually below.`
+              : "No VPS targets configured yet. Save your provider API key above, or add a profile manually."}
           </p>
         ) : (
           <ul className="space-y-3">

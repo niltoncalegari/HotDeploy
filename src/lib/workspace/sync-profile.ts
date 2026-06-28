@@ -43,6 +43,26 @@ export function syncConnectionProfileFromVm(
   };
 }
 
+export function ensureConnectionProfileFromCredentials(
+  workspace: WorkspaceConfig,
+  virtualMachineId: number | null | undefined,
+  label?: string,
+): WorkspaceConfig | null {
+  if (
+    !virtualMachineId ||
+    Number.isNaN(virtualMachineId) ||
+    workspace.connectionProfiles.length > 0
+  ) {
+    return null;
+  }
+
+  return syncConnectionProfileFromVm(
+    workspace,
+    virtualMachineId,
+    label ?? "Default VPS",
+  );
+}
+
 export function findProfileLabelForVm(
   virtualMachineId: number,
   virtualMachines: Array<{ id: number; hostname: string }>,
