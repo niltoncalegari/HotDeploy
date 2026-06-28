@@ -21,6 +21,14 @@ export function compareSemverDesc(left: string, right: string): number {
 /** User-facing release notes. Prefer newest-first in source; always sorted at read time. */
 export const RELEASE_NOTES: ReleaseNotes[] = [
   {
+    version: "0.9.3",
+    fixes: [
+      "GitHub deploy projects save correctly — workspace JSON field names now match the desktop app",
+      "Deploy project save shows one toast (success or error), not both at once",
+      "Form field help icons show readable tooltips on hover and keyboard focus",
+    ],
+  },
+  {
     version: "0.9.2",
     features: [
       "Projects home split into VPS & Containers and GitHub CI tabs",
