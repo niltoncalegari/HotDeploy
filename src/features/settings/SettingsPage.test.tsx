@@ -1,6 +1,8 @@
 // As a developer, I want settings grouped in tabs so that I can find credentials faster.
-import { screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { renderWithProviders } from "@/test/render";
@@ -41,13 +43,38 @@ vi.mock("@/lib/workspace/client", () => ({
 }));
 
 describe("SettingsPage", () => {
-  it("renders tab triggers for each settings section", async () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders section nav links for each settings area", async () => {
     renderWithProviders(<SettingsPage />);
 
-    expect(await screen.findByRole("tab", { name: /general/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /providers/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /github & ci/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /deploy projects/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /history/i })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /general/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /providers/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /github & ci/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /deploy projects/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /history/i })).toBeInTheDocument();
+  });
+
+  it("opens the deploy section from the tab query parameter", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/settings?tab=deploy"]}>
+          <Routes>
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("link", { name: /deploy projects/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

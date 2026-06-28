@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderKanban, Plus, Trash2 } from "lucide-react";
+import { FolderKanban, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/form/FieldLabel";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,8 +32,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DEPLOY_PROJECT_FIELD_HELP,
+  hasDeployProjectFormErrors,
+  validateDeployProjectForm,
+  type DeployProjectFieldErrors,
+} from "@/features/settings/deployProjectForm";
 import { listGitHubRepos } from "@/lib/github/client";
+import { logDiagnosticError } from "@/lib/diagnostics/client";
 import { githubRepoLabel, parseGithubRepoFromUrl } from "@/lib/github/repo";
+import {
+  getCredentialsStatus,
+  listProjects,
+  parseHostingerError,
+} from "@/lib/hostinger/client";
 import { saveWorkspace } from "@/lib/workspace/client";
 import {
   createDeployProjectConfig,
@@ -46,17 +59,68 @@ interface DeployProjectsCardProps {
 
 export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const dockerProjectHint = searchParams.get("dockerProject")
+    ? decodeURIComponent(searchParams.get("dockerProject")!)
+    : "";
   const [name, setName] = useState("");
-  const [connectionProfileId, setConnectionProfileId] = useState("");
-  const [dockerProjectName, setDockerProjectName] = useState("");
+  const [connectionProfileId, setConnectionProfileId] = useState(
+    () => workspace.connectionProfiles[0]?.id ?? "",
+  );
+  const [dockerProjectName, setDockerProjectName] = useState(dockerProjectHint);
+  const [dockerProjectManualEntry, setDockerProjectManualEntry] = useState(false);
   const [deploySourceType, setDeploySourceType] = useState<"local" | "github">(
-    "local",
+    dockerProjectHint ? "github" : "local",
   );
   const [composeFilePath, setComposeFilePath] = useState("");
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [selectedRepoFullName, setSelectedRepoFullName] = useState("");
   const [environmentProfile, setEnvironmentProfile] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<DeployProjectFieldErrors>({});
+
+  const selectedProfileId =
+    connectionProfileId || workspace.connectionProfiles[0]?.id || "";
+
+  const selectedProfile = workspace.connectionProfiles.find(
+    (profile) => profile.id === selectedProfileId,
+  );
+
+  const { data: credentials } = useQuery({
+    queryKey: ["credentials-status"],
+    queryFn: getCredentialsStatus,
+  });
+
+  const {
+    data: remoteDockerProjects = [],
+    isLoading: remoteProjectsLoading,
+    isError: remoteProjectsError,
+    error: remoteProjectsQueryError,
+    refetch: refetchRemoteProjects,
+  } = useQuery({
+    queryKey: [
+      "projects",
+      selectedProfile?.virtualMachineId,
+      selectedProfile?.provider,
+    ],
+    queryFn: () =>
+      listProjects(
+        selectedProfile!.virtualMachineId,
+        selectedProfile!.provider ?? "hostinger",
+      ),
+    enabled: Boolean(selectedProfile && credentials?.configured),
+    retry: false,
+  });
+
+  const dockerProjectInRemoteList = remoteDockerProjects.some(
+    (project) => project.name === dockerProjectName,
+  );
+  const showDockerProjectPicker =
+    Boolean(selectedProfile && credentials?.configured) &&
+    !dockerProjectManualEntry &&
+    (remoteProjectsLoading ||
+      (remoteDockerProjects.length > 0 &&
+        (!dockerProjectName || dockerProjectInRemoteList)));
 
   const { data: githubRepos = [] } = useQuery({
     queryKey: ["github-repos"],
@@ -67,7 +131,13 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
 
   const saveMutation = useMutation({
     mutationFn: saveWorkspace,
-    onError: () => {
+    onError: (error, config) => {
+      const lastProject =
+        config.deployProjects[config.deployProjects.length - 1];
+      void logDiagnosticError("DeployProjectsCard.save", error, {
+        deployProjectName: lastProject?.name,
+        dockerProjectName: lastProject?.dockerProjectName,
+      });
       toast.error("Failed to save deploy project.");
     },
   });
@@ -80,6 +150,20 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
 
     queryClient.setQueryData(["workspace"], nextConfig);
     saveMutation.mutate(nextConfig);
+  };
+
+  const clearFieldError = (field: keyof DeployProjectFieldErrors) => {
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[field];
+      if (field !== "form") {
+        delete next.form;
+      }
+      return next;
+    });
   };
 
   const handlePickComposeFile = async () => {
@@ -95,32 +179,56 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
 
     if (typeof selected === "string") {
       setComposeFilePath(selected);
+      clearFieldError("composeFilePath");
     }
   };
 
+  const handleDockerProjectPick = (value: string) => {
+    if (value === "__none__") {
+      setDockerProjectName("");
+      setDockerProjectManualEntry(false);
+      clearFieldError("dockerProjectName");
+      return;
+    }
+
+    if (value === "__custom__") {
+      setDockerProjectManualEntry(true);
+      setDockerProjectName("");
+      clearFieldError("dockerProjectName");
+      return;
+    }
+
+    setDockerProjectManualEntry(false);
+    setDockerProjectName(value);
+    if (!name.trim()) {
+      setName(value);
+    }
+    clearFieldError("dockerProjectName");
+  };
+
   const handleAdd = () => {
-    if (workspace.connectionProfiles.length === 0) {
-      toast.error("Add a connection profile before creating deploy projects.");
+    const errors = validateDeployProjectForm(
+      {
+        name,
+        connectionProfileId: selectedProfileId,
+        dockerProjectName,
+        deploySourceType,
+        composeFilePath,
+        repositoryUrl,
+        selectedRepoFullName,
+      },
+      workspace.connectionProfiles.length > 0,
+    );
+
+    if (hasDeployProjectFormErrors(errors)) {
+      setFieldErrors(errors);
+      toast.error(
+        errors.form ?? "Fill in all required fields marked with * before saving.",
+      );
       return;
     }
 
-    const profileId =
-      connectionProfileId || workspace.connectionProfiles[0]?.id || "";
-
-    if (!name.trim() || !profileId || !dockerProjectName.trim()) {
-      toast.error("Fill in name, VPS profile, and Docker project name.");
-      return;
-    }
-
-    if (deploySourceType === "local" && !composeFilePath.trim()) {
-      toast.error("Select a local compose file.");
-      return;
-    }
-
-    if (deploySourceType === "github" && !repositoryUrl.trim() && !selectedRepoFullName) {
-      toast.error("Select or enter a GitHub repository.");
-      return;
-    }
+    setFieldErrors({});
 
     const resolvedUrl =
       repositoryUrl.trim() ||
@@ -135,7 +243,7 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
 
     const project = createDeployProjectConfig({
       name: name.trim(),
-      connectionProfileId: profileId,
+      connectionProfileId: selectedProfileId,
       dockerProjectName: dockerProjectName.trim(),
       deploySource:
         deploySourceType === "local"
@@ -152,11 +260,12 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
 
     persist([...workspace.deployProjects, project]);
     setName("");
-    setDockerProjectName("");
+    setDockerProjectName(dockerProjectHint);
     setComposeFilePath("");
     setRepositoryUrl("");
     setSelectedRepoFullName("");
     setEnvironmentProfile("");
+    setDockerProjectManualEntry(false);
     toast.success("Deploy project saved.");
   };
 
@@ -171,6 +280,8 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
     toast.success("Deploy project removed.");
   };
 
+  const noConnectionProfiles = workspace.connectionProfiles.length === 0;
+
   return (
     <Card className="md:col-span-2">
       <CardHeader>
@@ -180,7 +291,13 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
         </CardTitle>
         <CardDescription>
           Register Compose files or GitHub repos to deploy on a configured VPS
-          target.
+          target. Fields marked with{" "}
+          <span className="text-destructive font-medium">*</span> are required.
+          Hover the{" "}
+          <span className="text-muted-foreground inline-flex align-middle">
+            ?
+          </span>{" "}
+          icon next to each label for guidance.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -235,51 +352,45 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
           </ul>
         )}
 
+        {noConnectionProfiles ? (
+          <div
+            className="border-destructive/30 bg-destructive/5 rounded-md border p-3 text-sm"
+            role="alert"
+          >
+            <p className="font-medium">Connection profile required</p>
+            <p className="text-muted-foreground mt-1">
+              {credentials?.configured
+                ? "Your API key is connected, but no VPS profile is saved in the workspace yet. Reload the app or open Settings → Providers — HotDeploy will sync one automatically from your saved VM ID."
+                : "Save your provider API key and create a VPS connection profile before adding deploy projects."}
+            </p>
+            <Button asChild variant="outline" size="sm" className="mt-3">
+              <Link to="/settings?tab=providers">Open Providers settings</Link>
+            </Button>
+          </div>
+        ) : null}
+
+        {fieldErrors.form ? (
+          <p className="text-destructive text-sm" role="alert">
+            {fieldErrors.form}
+          </p>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="project-name">Display name</Label>
-            <Input
-              id="project-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="My API"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="project-profile">Connection profile</Label>
-            <Select
-              value={connectionProfileId || workspace.connectionProfiles[0]?.id || ""}
-              onValueChange={setConnectionProfileId}
-              disabled={workspace.connectionProfiles.length === 0}
+            <FieldLabel
+              htmlFor="deploy-source-type"
+              required
+              help={DEPLOY_PROJECT_FIELD_HELP.deploySourceType}
             >
-              <SelectTrigger id="project-profile" className="w-full">
-                <SelectValue placeholder="Select profile" />
-              </SelectTrigger>
-              <SelectContent>
-                {workspace.connectionProfiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="docker-project-name">Docker project name</Label>
-            <Input
-              id="docker-project-name"
-              value={dockerProjectName}
-              onChange={(event) => setDockerProjectName(event.target.value)}
-              placeholder="my-api"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="deploy-source-type">Deploy source</Label>
+              Deploy source
+            </FieldLabel>
             <Select
               value={deploySourceType}
-              onValueChange={(value) =>
-                setDeploySourceType(value as "local" | "github")
-              }
+              onValueChange={(value) => {
+                setDeploySourceType(value as "local" | "github");
+                clearFieldError("composeFilePath");
+                clearFieldError("repositoryUrl");
+              }}
             >
               <SelectTrigger id="deploy-source-type" className="w-full">
                 <SelectValue />
@@ -290,26 +401,233 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <FieldLabel
+              htmlFor="project-profile"
+              required
+              help={DEPLOY_PROJECT_FIELD_HELP.connectionProfileId}
+            >
+              Connection profile
+            </FieldLabel>
+            <Select
+              value={selectedProfileId}
+              onValueChange={(value) => {
+                setConnectionProfileId(value);
+                setDockerProjectName("");
+                setDockerProjectManualEntry(false);
+                clearFieldError("connectionProfileId");
+                clearFieldError("dockerProjectName");
+              }}
+              disabled={noConnectionProfiles}
+            >
+              <SelectTrigger
+                id="project-profile"
+                className="w-full"
+                aria-invalid={Boolean(fieldErrors.connectionProfileId)}
+                aria-describedby={
+                  fieldErrors.connectionProfileId ? "project-profile-error" : undefined
+                }
+              >
+                <SelectValue placeholder="Select profile" />
+              </SelectTrigger>
+              <SelectContent>
+                {workspace.connectionProfiles.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {profile.label} · VM {profile.virtualMachineId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError
+              id="project-profile-error"
+              message={fieldErrors.connectionProfileId}
+            />
+          </div>
+          <div className="space-y-2">
+            <FieldLabel
+              htmlFor="docker-project-name"
+              required
+              help={DEPLOY_PROJECT_FIELD_HELP.dockerProjectName}
+            >
+              Docker project
+            </FieldLabel>
+            {showDockerProjectPicker ? (
+              <div className="space-y-2">
+                <Select
+                  value={
+                    dockerProjectName && dockerProjectInRemoteList
+                      ? dockerProjectName
+                      : dockerProjectManualEntry
+                        ? "__custom__"
+                        : "__none__"
+                  }
+                  onValueChange={handleDockerProjectPick}
+                  disabled={remoteProjectsLoading}
+                >
+                  <SelectTrigger
+                    id="docker-project-name"
+                    className="w-full"
+                    aria-invalid={Boolean(fieldErrors.dockerProjectName)}
+                    aria-describedby={
+                      fieldErrors.dockerProjectName
+                        ? "docker-project-name-error"
+                        : undefined
+                    }
+                  >
+                    <SelectValue
+                      placeholder={
+                        remoteProjectsLoading
+                          ? "Loading Docker projects…"
+                          : "Select Docker project…"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Select Docker project…</SelectItem>
+                    {remoteDockerProjects.map((project) => (
+                      <SelectItem key={project.name} value={project.name}>
+                        {project.name} · {project.state}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__custom__">Enter name manually…</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={remoteProjectsLoading}
+                    onClick={() => {
+                      void refetchRemoteProjects();
+                    }}
+                  >
+                    {remoteProjectsLoading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-4" />
+                    )}
+                    Refresh list
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  id="docker-project-name"
+                  value={dockerProjectName}
+                  onChange={(event) => {
+                    setDockerProjectName(event.target.value);
+                    clearFieldError("dockerProjectName");
+                  }}
+                  placeholder="mflow-staging"
+                  aria-invalid={Boolean(fieldErrors.dockerProjectName)}
+                  aria-describedby={
+                    fieldErrors.dockerProjectName
+                      ? "docker-project-name-error"
+                      : undefined
+                  }
+                />
+                {!credentials?.configured ? (
+                  <p className="text-muted-foreground text-xs">
+                    Save your provider API key under Settings → Providers to
+                    load Docker projects from the VPS.
+                  </p>
+                ) : remoteProjectsError ? (
+                  <p className="text-destructive text-xs">
+                    {parseHostingerError(remoteProjectsQueryError)}
+                  </p>
+                ) : remoteDockerProjects.length === 0 && selectedProfile ? (
+                  <p className="text-muted-foreground text-xs">
+                    No Docker projects found on this VPS yet. Enter the name
+                    manually or deploy from the Projects page first.
+                  </p>
+                ) : null}
+                {remoteDockerProjects.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto px-0"
+                    onClick={() => {
+                      setDockerProjectManualEntry(false);
+                      setDockerProjectName("");
+                      clearFieldError("dockerProjectName");
+                    }}
+                  >
+                    Pick from VPS list
+                  </Button>
+                ) : null}
+              </div>
+            )}
+            <FieldError
+              id="docker-project-name-error"
+              message={fieldErrors.dockerProjectName}
+            />
+          </div>
+          <div className="space-y-2">
+            <FieldLabel
+              htmlFor="project-name"
+              required
+              help={DEPLOY_PROJECT_FIELD_HELP.name}
+            >
+              Display name
+            </FieldLabel>
+            <Input
+              id="project-name"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                clearFieldError("name");
+              }}
+              placeholder="MFlow Staging"
+              aria-invalid={Boolean(fieldErrors.name)}
+              aria-describedby={fieldErrors.name ? "project-name-error" : undefined}
+            />
+            <FieldError id="project-name-error" message={fieldErrors.name} />
+          </div>
           {deploySourceType === "local" ? (
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="compose-file-path">Compose file path</Label>
+              <FieldLabel
+                htmlFor="compose-file-path"
+                required
+                help={DEPLOY_PROJECT_FIELD_HELP.composeFilePath}
+              >
+                Compose file path
+              </FieldLabel>
               <div className="flex gap-2">
                 <Input
                   id="compose-file-path"
                   value={composeFilePath}
-                  onChange={(event) => setComposeFilePath(event.target.value)}
+                  onChange={(event) => {
+                    setComposeFilePath(event.target.value);
+                    clearFieldError("composeFilePath");
+                  }}
                   placeholder="/Users/me/app/docker-compose.yaml"
+                  aria-invalid={Boolean(fieldErrors.composeFilePath)}
+                  aria-describedby={
+                    fieldErrors.composeFilePath ? "compose-file-path-error" : undefined
+                  }
                 />
                 <Button type="button" variant="outline" onClick={handlePickComposeFile}>
                   Browse
                 </Button>
               </div>
+              <FieldError
+                id="compose-file-path-error"
+                message={fieldErrors.composeFilePath}
+              />
             </div>
           ) : (
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-4 md:col-span-2">
               {githubRepos.length > 0 ? (
                 <div className="space-y-2">
-                  <Label htmlFor="github-repo-picker">Repository from GitHub</Label>
+                  <FieldLabel
+                    htmlFor="github-repo-picker"
+                    required
+                    help={DEPLOY_PROJECT_FIELD_HELP.githubRepoPicker}
+                  >
+                    Repository from GitHub
+                  </FieldLabel>
                   <Select
                     value={selectedRepoFullName || "__none__"}
                     onValueChange={(value) => {
@@ -318,6 +636,7 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
                       if (next) {
                         setRepositoryUrl(`https://github.com/${next}`);
                       }
+                      clearFieldError("repositoryUrl");
                     }}
                   >
                     <SelectTrigger id="github-repo-picker" className="w-full">
@@ -334,20 +653,49 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
                     </SelectContent>
                   </Select>
                 </div>
-              ) : null}
-              <Label htmlFor="repository-url">Or GitHub repository URL</Label>
-              <Input
-                id="repository-url"
-                value={repositoryUrl}
-                onChange={(event) => setRepositoryUrl(event.target.value)}
-                placeholder="https://github.com/user/repo"
-              />
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Connect GitHub under Settings → GitHub & CI to load your
+                  repository list, or paste a URL below.
+                </p>
+              )}
+              <div className="space-y-2">
+                <FieldLabel
+                  htmlFor="repository-url"
+                  required={githubRepos.length === 0}
+                  help={DEPLOY_PROJECT_FIELD_HELP.repositoryUrl}
+                >
+                  {githubRepos.length > 0
+                    ? "Or GitHub repository URL"
+                    : "GitHub repository URL"}
+                </FieldLabel>
+                <Input
+                  id="repository-url"
+                  value={repositoryUrl}
+                  onChange={(event) => {
+                    setRepositoryUrl(event.target.value);
+                    clearFieldError("repositoryUrl");
+                  }}
+                  placeholder="https://github.com/user/repo"
+                  aria-invalid={Boolean(fieldErrors.repositoryUrl)}
+                  aria-describedby={
+                    fieldErrors.repositoryUrl ? "repository-url-error" : undefined
+                  }
+                />
+                <FieldError
+                  id="repository-url-error"
+                  message={fieldErrors.repositoryUrl}
+                />
+              </div>
             </div>
           )}
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="environment-profile">
+            <FieldLabel
+              htmlFor="environment-profile"
+              help={DEPLOY_PROJECT_FIELD_HELP.environmentProfile}
+            >
               Environment profile (optional)
-            </Label>
+            </FieldLabel>
             <Textarea
               id="environment-profile"
               value={environmentProfile}
@@ -358,16 +706,22 @@ export function DeployProjectsCard({ workspace }: DeployProjectsCardProps) {
           </div>
         </div>
 
-        <Button
-          type="button"
-          onClick={handleAdd}
-          disabled={
-            saveMutation.isPending || workspace.connectionProfiles.length === 0
-          }
-        >
-          <Plus className="size-4" />
-          Add deploy project
-        </Button>
+        <div className="space-y-2">
+          <Button
+            type="button"
+            onClick={handleAdd}
+            disabled={saveMutation.isPending || noConnectionProfiles}
+          >
+            <Plus className="size-4" />
+            Add deploy project
+          </Button>
+          {noConnectionProfiles ? (
+            <p className="text-muted-foreground text-xs">
+              Add a connection profile in Settings → Providers to enable this
+              button.
+            </p>
+          ) : null}
+        </div>
       </CardContent>
 
       <Dialog
